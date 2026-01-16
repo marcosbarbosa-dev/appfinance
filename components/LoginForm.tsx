@@ -18,6 +18,7 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
   const { login, supportInfo, maintenanceMessage, isSystemLocked } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [lockDismissed, setLockDismissed] = useState(false);
 
@@ -42,7 +43,7 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
 
   return (
     <>
-      <div className="relative bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 overflow-hidden">
+      <div className="relative bg-white p-8 rounded-2xl shadow-xl w-full max-md border border-slate-100 overflow-hidden">
         
         {/* Overlay de Bloqueio do Sistema */}
         {isSystemLocked && !lockDismissed && (
@@ -83,7 +84,7 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
               className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
               placeholder="Digite seu usuário"
               required
@@ -91,14 +92,24 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Senha</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3.5 pr-12 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-500 transition-colors focus:outline-none"
+                title={showPassword ? "Ocultar senha" : "Ver senha"}
+              >
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
+              </button>
+            </div>
           </div>
 
           {error && (

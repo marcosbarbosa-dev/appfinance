@@ -2,6 +2,30 @@
 import React from 'react';
 import { useAuth } from '../App';
 
+export const AvatarIcon = ({ type, className = "w-full h-full" }: { type: string; className?: string }) => {
+  if (type === 'female_shadow') {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        {/* Cabelo Estilo Chanel/Bob (Silhueta que diferencia o gênero) */}
+        <path d="M12 2.5c-4.2 0-7.5 3.3-7.5 7.5v5c0 .6.4 1 1 1h1.5v-6c0-2.8 2.2-5 5-5s5 2.2 5 5v6H18.5c.6 0 1-.4 1-1v-5c0-4.2-3.3-7.5-7.5-7.5z" />
+        {/* Rosto (Círculo da Cabeça) */}
+        <circle cx="12" cy="9" r="4" />
+        {/* Tronco/Ombros */}
+        <path d="M12 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+      </svg>
+    );
+  }
+  // Default Male Shadow
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      {/* Cabeça Masculina (Simples) */}
+      <circle cx="12" cy="8.5" r="4" />
+      {/* Tronco/Ombros */}
+      <path d="M12 14.5c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    </svg>
+  );
+};
+
 const LogoInfinity = ({ className = "w-6 h-6" }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
     <path 
@@ -18,7 +42,7 @@ const Sidebar: React.FC = () => {
   const { user, logout, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, isOnline } = useAuth();
 
   const menuItems = user?.role === 'admin' ? [
-    { id: 'dashboard', label: 'Dashboard Admin', icon: 'fas fa-shield-alt' },
+    { id: 'dashboard', label: 'Monitoração', icon: 'fas fa-shield-alt' },
     { id: 'usuarios', label: 'Usuários', icon: 'fas fa-users' },
     { id: 'logs', label: 'Logs do Sistema', icon: 'fas fa-history' },
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
@@ -70,8 +94,8 @@ const Sidebar: React.FC = () => {
 
         <div className="p-6 flex flex-col items-center gap-2">
           <div className="relative group">
-            <div className="w-20 h-20 rounded-[2.5rem] border-2 border-slate-800 bg-slate-900/50 flex items-center justify-center text-3xl text-slate-400 shadow-lg transition-transform group-hover:scale-105">
-              <i className={`fas ${user?.avatar === 'female_shadow' ? 'fa-user-nurse' : 'fa-user'} opacity-70`}></i>
+            <div className="w-20 h-20 rounded-[2.5rem] border-2 border-slate-800 bg-slate-900/50 flex items-center justify-center text-3xl text-slate-400 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
+              <AvatarIcon type={user?.avatar || 'male_shadow'} className="w-12 h-12 opacity-70" />
             </div>
             <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-slate-950 rounded-full flex items-center justify-center ${isOnline ? 'bg-violet-600' : 'bg-rose-500'}`}>
                <div className={`w-1.5 h-1.5 bg-white rounded-full ${isOnline ? 'animate-pulse' : ''}`}></div>

@@ -4,6 +4,7 @@ import { User, Category, Transaction, BankAccount, SystemLog, LogAction } from '
 import { supabase } from './supabase';
 import LoginForm from './components/LoginForm';
 import UserHome from './components/UserHome';
+import AdminDashboard from './components/AdminDashboard';
 import AdminPanel from './components/AdminPanel';
 import FirstLoginFlow from './components/FirstLoginFlow';
 import Sidebar from './components/Sidebar';
@@ -134,7 +135,6 @@ const App: React.FC = () => {
     }
   }, [user]);
 
-  // Handle Online/Offline Status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -154,9 +154,13 @@ const App: React.FC = () => {
     return true;
   }, []);
 
-  // Fix: Define addLog before logout to resolve "Cannot find name 'addLog'"
   const addLog = useCallback(async (userToLog: User, action: LogAction, details?: string) => {
     if (!isLoggingEnabled) return;
+    
+    // Filtro estrito conforme solicitado: Apenas registros, alterações e exclusões
+    const adminActions: LogAction[] = ['create_user', 'edit_user', 'delete_user'];
+    if (!adminActions.includes(action)) return;
+
     const newLog: SystemLog = {
       id: crypto.randomUUID(),
       userId: userToLog.uid,
@@ -165,28 +169,38 @@ const App: React.FC = () => {
       timestamp: new Date().toISOString(),
       details
     };
+    
+    // Atualiza o estado local para feedback imediato
     setLogsState(prev => [newLog, ...prev]);
-    await supabase.from('logs').insert(newLog);
+    
+    // Persiste no banco de dados
+    const { error } = await supabase.from('logs').insert(newLog);
+    if (error) console.error("Falha ao salvar log no banco:", error);
   }, [isLoggingEnabled]);
 
   const logout = useCallback(async () => {
-    if (userRef.current && userRef.current.role === 'admin') { 
-      addLog(userRef.current, 'logout'); 
-    }
     setIsSidebarOpen(false);
     setIsLoggingOut(true);
+    
+    localStorage.removeItem('personalle_user');
+    userRef.current = null;
+    
     await new Promise(resolve => setTimeout(resolve, 1500));
+    
     setUser(null);
     setIsLoggingOut(false);
     setActiveView('inicio');
     setError(null);
-  }, [addLog]);
+  }, []);
 
   const fetchData = useCallback(async (loggedInUser: User) => {
     const isAdmin = loggedInUser.role === 'admin';
-    
     const { data: currentUserStatus } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
     
+    if (!userRef.current || userRef.current.uid !== loggedInUser.uid) {
+      return;
+    }
+
     if (currentUserStatus) {
       const today = new Date().toISOString().split('T')[0];
       const isSuspendedByDate = currentUserStatus.suspensionDate && today >= currentUserStatus.suspensionDate;
@@ -206,7 +220,7 @@ const App: React.FC = () => {
       const { data: usersData } = await supabase.from('users').select('*');
       if (usersData) setAllUsersState(usersData);
       
-      const { data: logsData } = await supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(200);
+      const { data: logsData } = await supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(500);
       if (logsData) setLogsState(logsData);
     }
 
@@ -262,7 +276,11 @@ const App: React.FC = () => {
       }
 
       setUser(data);
-      if (data.role === 'admin') addLog(data, 'login');
+      if (data.role === 'admin') {
+          setActiveView('dashboard');
+      } else {
+          setActiveView('inicio');
+      }
     } catch (e) {
       setError("Falha na conexão com o servidor.");
     } finally {
@@ -375,13 +393,20 @@ const App: React.FC = () => {
   };
 
   const deleteLog = async (id: string) => {
-    await supabase.from('logs').delete().eq('id', id);
-    setLogsState(prev => prev.filter(l => l.id !== id));
+    const { error } = await supabase.from('logs').delete().eq('id', id);
+    if (!error) {
+      setLogsState(prev => prev.filter(l => l.id !== id));
+    }
   };
 
   const clearLogs = async () => {
-    await supabase.from('logs').delete().neq('id', '');
-    setLogsState([]);
+    // Filtro temporal amplo para garantir que o banco execute o delete total sem falha de tipagem no UUID
+    const { error } = await supabase.from('logs').delete().gt('timestamp', '1970-01-01T00:00:00Z');
+    if (!error) {
+      setLogsState([]);
+    } else {
+      console.error("Erro crítico ao limpar logs no banco:", error);
+    }
   };
 
   const setSupportInfo = async (info: string) => {
@@ -407,7 +432,7 @@ const App: React.FC = () => {
   const renderActiveView = () => {
     switch (activeView) {
       case 'inicio': return <UserHome />;
-      case 'dashboard': return <AdminPanel />;
+      case 'dashboard': return <AdminDashboard />;
       case 'usuarios': return <AdminPanel />;
       case 'relatorio': return <ReportsView />;
       case 'contas': return <AccountsManager />;
@@ -417,7 +442,7 @@ const App: React.FC = () => {
       case 'meus_dados': return <UserProfile />;
       case 'logs': return <LogsPanel />;
       case 'suporte': return <SupportManager />;
-      default: return <UserHome />;
+      default: return user?.role === 'admin' ? <AdminDashboard /> : <UserHome />;
     }
   };
 

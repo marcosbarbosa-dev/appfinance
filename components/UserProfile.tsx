@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../App';
+import { AvatarIcon } from './Sidebar';
 
 const UserProfile: React.FC = () => {
   const { user, updateProfile, setIsSidebarOpen } = useAuth();
@@ -16,14 +17,10 @@ const UserProfile: React.FC = () => {
     { 
       id: 'male_shadow', 
       label: 'Sombra Masculina', 
-      icon: 'fa-user',
-      color: 'bg-slate-100 text-slate-400'
     },
     { 
       id: 'female_shadow', 
       label: 'Sombra Feminina', 
-      icon: 'fa-user-tie', // Usando tie para diferenciar visualmente a silhueta ou mantendo padrão
-      color: 'bg-slate-100 text-slate-400'
     }
   ];
 
@@ -54,14 +51,6 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  const renderAvatarPreview = (type: string) => {
-    return (
-      <div className={`w-full h-full flex items-center justify-center text-4xl bg-slate-50 text-slate-300`}>
-        <i className={`fas ${type === 'female_shadow' ? 'fa-user-plus' : 'fa-user'} opacity-50`}></i>
-      </div>
-    );
-  };
-
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 pb-24">
       <div className="flex items-center gap-4 mb-8">
@@ -83,8 +72,8 @@ const UserProfile: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-widest mb-6">Avatar do Perfil</h3>
             
             <div className="relative inline-block mb-8">
-              <div className="w-32 h-32 rounded-3xl border-4 border-slate-100 shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center text-5xl text-slate-200">
-                <i className={`fas ${avatar === 'female_shadow' ? 'fa-user-nurse' : 'fa-user'}`}></i>
+              <div className="w-32 h-32 rounded-3xl border-4 border-slate-100 shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center text-slate-200">
+                <AvatarIcon type={avatar} className="w-20 h-20 opacity-60" />
               </div>
               <div className="absolute -bottom-2 -right-2 bg-violet-500 text-white w-8 h-8 rounded-xl flex items-center justify-center shadow-lg">
                 <i className="fas fa-fingerprint text-sm"></i>
@@ -104,7 +93,7 @@ const UserProfile: React.FC = () => {
                   }`}
                   title={opt.label}
                 >
-                  <i className={`fas ${opt.id === 'female_shadow' ? 'fa-user-nurse' : 'fa-user'}`}></i>
+                  <AvatarIcon type={opt.id} className="w-8 h-8 opacity-80" />
                   {avatar === opt.id && (
                     <div className="absolute -top-1 -right-1 bg-violet-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]">
                       <i className="fas fa-check"></i>
