@@ -4,14 +4,15 @@ export type UserRole = 'admin' | 'user';
 export interface User {
   uid: string;
   username: string;
-  password?: string; // Campo para persistência da senha
+  password?: string;
   name: string;
   role: UserRole;
   isActive: boolean;
   isFirstLogin: boolean;
   avatar?: string;
-  suspensionDate?: string; // Data para suspensão automática (YYYY-MM-DD)
-  updatedAt?: string; // Timestamp para controle de ordenação
+  suspensionDate?: string;
+  updatedAt?: string;
+  refreshId?: string; // Novo: ID para forçar refresh do navegador
 }
 
 export type TransactionType = 'income' | 'expense' | 'credit_card';
@@ -22,7 +23,7 @@ export interface Transaction {
   description: string;
   amount: number;
   type: TransactionType;
-  date: string; // ISO format
+  date: string;
   category: string;
   accountId: string;
   installmentNumber?: number;
@@ -31,7 +32,6 @@ export interface Transaction {
 
 export interface Category {
   id: string;
-  // Added userId to support user-specific or global categories
   userId?: string;
   name: string;
   type: 'income' | 'expense';
@@ -39,7 +39,6 @@ export interface Category {
   color: string;
 }
 
-// Fixed: Added optional userId property to allow linking bank accounts to specific users and resolve type errors during persistence
 export interface BankAccount {
   id: string;
   userId?: string;

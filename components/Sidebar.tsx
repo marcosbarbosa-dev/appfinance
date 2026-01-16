@@ -114,7 +114,7 @@ const Sidebar: React.FC = () => {
 
         <div className="p-4 border-t border-slate-900/50">
           <button
-            onClick={logout}
+            onClick={() => logout()}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all"
           >
             <i className="fas fa-power-off text-sm"></i>

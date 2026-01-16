@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
 
 const LogoInfinity = ({ className = "w-16 h-16" }: { className?: string }) => (
@@ -21,20 +21,35 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
   const [showPassword, setShowPassword] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [lockDismissed, setLockDismissed] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Reativar o overlay de bloqueio se o status de bloqueio mudar para ativo
+  // Ref para rastrear o estado anterior do bloqueio
+  const prevLockedRef = useRef<boolean | null>(null);
+
   useEffect(() => {
+    // Se o estado anterior era "bloqueado" e agora é "desbloqueado"
+    if (prevLockedRef.current === true && isSystemLocked === false) {
+      setCountdown(10);
+    }
+
     if (isSystemLocked) {
       setLockDismissed(false);
+      setCountdown(null);
     }
+    
+    // Atualiza a ref com o estado atual para a próxima execução
+    prevLockedRef.current = isSystemLocked;
   }, [isSystemLocked]);
 
-  // Reativar o overlay de bloqueio sempre que houver um erro enquanto o sistema estiver bloqueado
   useEffect(() => {
-    if (error && isSystemLocked) {
-      setLockDismissed(false);
+    let timer: any;
+    if (countdown !== null && countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    } else if (countdown === 0) {
+      window.location.reload();
     }
-  }, [error, isSystemLocked]);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +58,8 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
 
   return (
     <>
-      <div className="relative bg-white p-8 rounded-2xl shadow-xl w-full max-md border border-slate-100 overflow-hidden">
+      <div className="relative bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-slate-100 overflow-hidden">
         
-        {/* Overlay de Bloqueio do Sistema */}
         {isSystemLocked && !lockDismissed && (
           <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-500">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 text-center space-y-6 max-w-xs transform animate-in zoom-in-95">
@@ -67,6 +81,13 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {countdown !== null && !isSystemLocked && (
+          <div className="absolute top-0 left-0 right-0 bg-emerald-600 text-white p-2 text-center text-[9px] font-black uppercase tracking-widest z-[60] animate-in slide-in-from-top duration-500">
+            <i className="fas fa-sync-alt animate-spin mr-2"></i>
+            Sistema Ativado! Atualizando em {countdown}s...
           </div>
         )}
 
@@ -105,7 +126,6 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-500 transition-colors focus:outline-none"
-                title={showPassword ? "Ocultar senha" : "Ver senha"}
               >
                 <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
               </button>
@@ -124,43 +144,25 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
             disabled={loading}
             className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-violet-100 disabled:opacity-50 active:scale-95"
           >
-            {loading ? (
-              <i className="fas fa-circle-notch animate-spin"></i>
-            ) : (
-              'Entrar no Sistema'
-            )}
+            {loading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Entrar no Sistema'}
           </button>
         </form>
 
         <div className={`text-center mt-6 transition-all duration-500 ${isSystemLocked && !lockDismissed ? 'opacity-20 grayscale pointer-events-none scale-95' : ''}`}>
-          <button 
-            onClick={() => setShowSupport(true)}
-            className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors"
-          >
-            Entrar em contato com administrador
-          </button>
+          <button onClick={() => setShowSupport(true)} className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">Entrar em contato com administrador</button>
         </div>
       </div>
 
       {showSupport && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden">
             <div className="p-8 text-center space-y-6">
-              <div className="w-20 h-20 mx-auto bg-violet-50 text-violet-600 rounded-3xl flex items-center justify-center text-3xl shadow-inner">
-                <i className="fas fa-headset"></i>
-              </div>
+              <div className="w-20 h-20 mx-auto bg-violet-50 text-violet-600 rounded-3xl flex items-center justify-center text-3xl shadow-inner"><i className="fas fa-headset"></i></div>
               <div className="space-y-2">
                 <h3 className="text-xl font-bold text-slate-800 tracking-tight">Suporte Personalle</h3>
-                <p className="text-sm text-slate-500 font-medium leading-relaxed px-2">
-                  {supportInfo || "Entre em contato através dos canais oficiais."}
-                </p>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed px-2">{supportInfo || "Entre em contato através dos canais oficiais."}</p>
               </div>
-              <button 
-                onClick={() => setShowSupport(false)}
-                className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-              >
-                Entendido
-              </button>
+              <button onClick={() => setShowSupport(false)} className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg active:scale-95">Entendido</button>
             </div>
           </div>
         </div>

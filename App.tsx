@@ -46,6 +46,7 @@ interface AuthContextType {
   setIsLoggingEnabled: (enabled: boolean) => Promise<void>;
   isSystemLocked: boolean;
   setIsSystemLocked: (locked: boolean) => Promise<void>;
+  triggerGlobalRefresh: () => Promise<void>;
   addLog: (userToLog: User, action: LogAction, details?: string) => void;
   deleteLog: (id: string) => void;
   clearLogs: () => void;
@@ -54,7 +55,7 @@ interface AuthContextType {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
   login: (username: string, pass: string) => Promise<void>;
-  logout: () => void;
+  logout: (msg?: string) => void;
   updatePassword: (newPass: string) => Promise<void>;
   updateProfile: (name: string, avatar: string, password?: string) => Promise<void>;
   isOnline: boolean;
@@ -81,8 +82,8 @@ const LogoInfinity = ({ className = "w-16 h-16" }: { className?: string }) => (
   </svg>
 );
 
-const LogoutLoading: React.FC = () => (
-  <div className="fixed inset-0 z-[300] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-500">
+const LogoutLoading: React.FC<{ message?: string }> = ({ message = "Processando..." }) => (
+  <div className="fixed inset-0 z-[300] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center animate-in fade-in duration-500">
     <div className="text-center space-y-6">
       <div className="relative w-24 h-24 mx-auto">
         <div className="absolute inset-0 bg-violet-500/20 rounded-full animate-ping"></div>
@@ -92,9 +93,9 @@ const LogoutLoading: React.FC = () => (
       </div>
       <div className="space-y-2">
         <h2 className="text-white text-xl font-black tracking-tight">Personalle Infinity</h2>
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-3 px-8">
           <i className="fas fa-circle-notch animate-spin text-violet-400 text-sm"></i>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Sessão encerrada pelo administrador...</p>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">{message || "Saindo com segurança..."}</p>
         </div>
       </div>
     </div>
@@ -108,6 +109,8 @@ const App: React.FC = () => {
   });
   
   const userRef = useRef<User | null>(user);
+  const lastRefreshId = useRef<string | null>(user?.refreshId || null);
+  const lastGlobalRefreshId = useRef<string | null>(null);
 
   const [allUsers, setAllUsersState] = useState<User[]>([]);
   const [categories, setCategoriesState] = useState<Category[]>([]);
@@ -122,6 +125,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflineAlert, setShowOfflineAlert] = useState(false);
@@ -154,98 +158,111 @@ const App: React.FC = () => {
     return true;
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (msg?: any) => {
     setIsSidebarOpen(false);
-    setIsLoggingOut(true);
-    
     localStorage.removeItem('personalle_user');
     userRef.current = null;
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     setUser(null);
+    if (msg && typeof msg === 'string') setLogoutMessage(msg);
+    else setLogoutMessage("");
+    setIsLoggingOut(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoggingOut(false);
+    setLogoutMessage("");
     setActiveView('inicio');
     setError(null);
   }, []);
 
-  const fetchData = useCallback(async (loggedInUser: User) => {
-    const isAdmin = loggedInUser.role === 'admin';
-    const { data: currentUserStatus } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
-    
-    if (!userRef.current || userRef.current.uid !== loggedInUser.uid) {
-      return;
-    }
+  const fetchGlobalConfig = useCallback(async () => {
+    try {
+      const { data: configData } = await supabase.from('system_config').select('*').single();
+      if (configData) {
+        setSupportInfoState(configData.supportInfo || "");
+        setMaintenanceMessageState(configData.maintenanceMessage || "");
+        setIsLoggingEnabledState(configData.isLoggingEnabled ?? true);
+        setIsSystemLockedState(configData.isSystemLocked ?? false);
 
-    // Monitoramento global de configuração (isSystemLocked)
-    const { data: configData } = await supabase.from('system_config').select('*').single();
-    if (configData) {
-      setSupportInfoState(configData.supportInfo || "");
-      setMaintenanceMessageState(configData.maintenanceMessage || "");
-      setIsLoggingEnabledState(configData.isLoggingEnabled ?? true);
-      setIsSystemLockedState(configData.isSystemLocked ?? false);
+        if (lastGlobalRefreshId.current === null) {
+          lastGlobalRefreshId.current = configData.globalRefreshId;
+        } else if (configData.globalRefreshId && lastGlobalRefreshId.current !== configData.globalRefreshId) {
+          window.location.reload();
+          return;
+        }
 
-      // Deslogar usuários Platinum se o sistema estiver bloqueado
-      if (configData.isSystemLocked && loggedInUser.role !== 'admin') {
-        logout();
-        return;
+        if (configData.isSystemLocked && userRef.current && userRef.current.role !== 'admin') {
+          logout("Sessão encerrada pelo administrador.");
+          return;
+        }
       }
+    } catch (e) {
+      console.error("Erro config:", e);
     }
-
-    if (currentUserStatus) {
-      const today = new Date().toISOString().split('T')[0];
-      const isSuspendedByDate = currentUserStatus.suspensionDate && today >= currentUserStatus.suspensionDate;
-      
-      if (!currentUserStatus.isActive || isSuspendedByDate) {
-        logout();
-        return;
-      }
-      
-      setUser(currentUserStatus);
-    } else {
-      logout();
-      return;
-    }
-
-    if (isAdmin) {
-      const { data: usersData } = await supabase.from('users').select('*');
-      if (usersData) setAllUsersState(usersData);
-      
-      const { data: logsData } = await supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(500);
-      if (logsData) setLogsState(logsData);
-    }
-
-    const { data: catsData } = await supabase.from('categories').select('*').or(`userId.eq.${loggedInUser.uid},userId.is.null`);
-    if (catsData) setCategoriesState(catsData);
-
-    const { data: transData } = await supabase.from('transactions').select('*').eq('userId', loggedInUser.uid);
-    if (transData) setTransactionsState(transData);
-
-    const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
-    if (accsData) setBankAccountsState(accsData);
-
   }, [logout]);
 
-  // Polling de 10 segundos para manter o sistema "vivo" e monitorar ordens de desconexão
+  const fetchUserData = useCallback(async (loggedInUser: User) => {
+    if (!userRef.current) return;
+    try {
+      const { data: currentUserStatus } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
+      if (currentUserStatus && userRef.current) {
+        if (currentUserStatus.refreshId && lastRefreshId.current && currentUserStatus.refreshId !== lastRefreshId.current) {
+          window.location.reload();
+          return;
+        }
+        lastRefreshId.current = currentUserStatus.refreshId || null;
+
+        const today = new Date().toISOString().split('T')[0];
+        const isSuspendedByDate = currentUserStatus.suspensionDate && today >= currentUserStatus.suspensionDate;
+        if (!currentUserStatus.isActive || isSuspendedByDate) {
+          logout("Sua conta foi suspensa.");
+          return;
+        }
+        setUser(currentUserStatus);
+      } else if (!currentUserStatus && userRef.current) {
+        logout();
+        return;
+      }
+
+      if (loggedInUser.role === 'admin' && userRef.current) {
+        const { data: usersData } = await supabase.from('users').select('*');
+        if (usersData) setAllUsersState(usersData);
+        const { data: logsData } = await supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(500);
+        if (logsData) setLogsState(logsData);
+      }
+
+      if (userRef.current) {
+        const { data: catsData } = await supabase.from('categories').select('*').or(`userId.eq.${loggedInUser.uid},userId.is.null`);
+        if (catsData) setCategoriesState(catsData);
+        const { data: transData } = await supabase.from('transactions').select('*').eq('userId', loggedInUser.uid);
+        if (transData) setTransactionsState(transData);
+        const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
+        if (accsData) setBankAccountsState(accsData);
+      }
+    } catch (e) {
+      console.error("Erro userData:", e);
+    }
+  }, [logout]);
+
+  useEffect(() => {
+    fetchGlobalConfig();
+    const interval = setInterval(fetchGlobalConfig, 10000);
+    return () => clearInterval(interval);
+  }, [fetchGlobalConfig]);
+
   useEffect(() => {
     let interval: any;
     if (user) {
-      fetchData(user);
+      fetchUserData(user);
       interval = setInterval(() => {
-        if (userRef.current) fetchData(userRef.current);
+        if (userRef.current) fetchUserData(userRef.current);
       }, 10000);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [user, fetchData]);
+    return () => { if (interval) clearInterval(interval); };
+  }, [user, fetchUserData]);
 
   const addLog = useCallback(async (userToLog: User, action: LogAction, details?: string) => {
     if (!isLoggingEnabled) return;
-    
     const adminActions: LogAction[] = ['create_user', 'edit_user', 'delete_user'];
     if (!adminActions.includes(action)) return;
-
     const newLog: SystemLog = {
       id: crypto.randomUUID(),
       userId: userToLog.uid,
@@ -254,10 +271,8 @@ const App: React.FC = () => {
       timestamp: new Date().toISOString(),
       details
     };
-    
     setLogsState(prev => [newLog, ...prev]);
-    const { error } = await supabase.from('logs').insert(newLog);
-    if (error) console.error("Falha ao salvar log:", error);
+    await supabase.from('logs').insert(newLog);
   }, [isLoggingEnabled]);
 
   const login = async (username: string, pass: string) => {
@@ -265,36 +280,27 @@ const App: React.FC = () => {
     setError(null);
     try {
       const { data, error: loginError } = await supabase.from('users').select('*').eq('username', username).eq('password', pass).single();
-      
       if (loginError || !data) {
         setError("Usuário ou senha incorretos.");
         setLoading(false);
         return;
       }
-
       const today = new Date().toISOString().split('T')[0];
       const isSuspendedByDate = data.suspensionDate && today >= data.suspensionDate;
-
       if (!data.isActive || isSuspendedByDate) {
-        setError("Seu acesso foi suspenso. Entre em contato com o suporte.");
+        setError("Acesso suspenso. Contate o suporte.");
         setLoading(false);
         return;
       }
-
       if (isSystemLocked && data.role !== 'admin') {
-        setError(maintenanceMessage || "O sistema está em manutenção.");
+        setError(maintenanceMessage || "Sistema em manutenção.");
         setLoading(false);
         return;
       }
-
       setUser(data);
-      if (data.role === 'admin') {
-          setActiveView('dashboard');
-      } else {
-          setActiveView('inicio');
-      }
+      setActiveView(data.role === 'admin' ? 'dashboard' : 'inicio');
     } catch (e) {
-      setError("Falha na conexão com o servidor.");
+      setError("Falha na conexão.");
     } finally {
       setLoading(false);
     }
@@ -302,27 +308,21 @@ const App: React.FC = () => {
 
   const updatePassword = async (newPass: string) => {
     if (!user) return;
-    const { error: upError } = await supabase.from('users').update({ password: newPass, isFirstLogin: false }).eq('uid', user.uid);
-    if (!upError) {
-      setUser({ ...user, password: newPass, isFirstLogin: false });
-    }
+    await supabase.from('users').update({ password: newPass, isFirstLogin: false }).eq('uid', user.uid);
+    setUser({ ...user, password: newPass, isFirstLogin: false });
   };
 
   const updateProfile = async (name: string, avatar: string, password?: string) => {
     if (!user) return;
     const updates: any = { name, avatar };
     if (password) updates.password = password;
-    const { error: upError } = await supabase.from('users').update(updates).eq('uid', user.uid);
-    if (!upError) {
-      setUser({ ...user, ...updates });
-    }
+    await supabase.from('users').update(updates).eq('uid', user.uid);
+    setUser({ ...user, ...updates });
   };
 
   const setAllUsers = async (users: User[]) => {
     setAllUsersState(users);
-    for (const u of users) {
-      await supabase.from('users').upsert(u);
-    }
+    for (const u of users) await supabase.from('users').upsert(u);
   };
 
   const saveUser = async (userData: User) => {
@@ -400,42 +400,35 @@ const App: React.FC = () => {
     setBankAccountsState(prev => prev.filter(a => a.id !== id));
   };
 
-  const setLogs = async (newLogs: SystemLog[]) => {
-    setLogsState(newLogs);
-  };
-
+  const setLogs = async (newLogs: SystemLog[]) => setLogsState(newLogs);
   const deleteLog = async (id: string) => {
-    const { error } = await supabase.from('logs').delete().eq('id', id);
-    if (!error) {
-      setLogsState(prev => prev.filter(l => l.id !== id));
-    }
+    await supabase.from('logs').delete().eq('id', id);
+    setLogsState(prev => prev.filter(l => l.id !== id));
   };
-
   const clearLogs = async () => {
-    const { error } = await supabase.from('logs').delete().gt('timestamp', '1970-01-01T00:00:00Z');
-    if (!error) {
-      setLogsState([]);
-    }
+    await supabase.from('logs').delete().gt('timestamp', '1970-01-01T00:00:00Z');
+    setLogsState([]);
   };
 
   const setSupportInfo = async (info: string) => {
     setSupportInfoState(info);
     await supabase.from('system_config').upsert({ id: 'main', supportInfo: info });
   };
-
   const setMaintenanceMessage = async (msg: string) => {
     setMaintenanceMessageState(msg);
     await supabase.from('system_config').upsert({ id: 'main', maintenanceMessage: msg });
   };
-
   const setIsLoggingEnabled = async (enabled: boolean) => {
     setIsLoggingEnabledState(enabled);
     await supabase.from('system_config').upsert({ id: 'main', isLoggingEnabled: enabled });
   };
-
   const setIsSystemLocked = async (locked: boolean) => {
     setIsSystemLockedState(locked);
     await supabase.from('system_config').upsert({ id: 'main', isSystemLocked: locked });
+  };
+  const triggerGlobalRefresh = async () => {
+    const newRid = crypto.randomUUID();
+    await supabase.from('system_config').upsert({ id: 'main', globalRefreshId: newRid });
   };
 
   const renderActiveView = () => {
@@ -455,27 +448,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (isLoggingOut) return <LogoutLoading />;
-
-  if (!user) {
-    return (
-      <AuthContext.Provider value={{ 
-        user: null, allUsers, setAllUsers, saveUser, deleteUserFromDb,
-        categories, saveCategory, saveCategoriesBatch, deleteCategory,
-        transactions, saveTransaction, saveTransactions, deleteTransactionFromDb,
-        bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
-        logs, setLogs, supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
-        isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
-        addLog, deleteLog, clearLogs, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
-        login, logout, updatePassword, updateProfile, isOnline, checkInternet
-      }}>
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-          <LoginForm error={error} loading={loading} />
-          <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
-        </div>
-      </AuthContext.Provider>
-    );
-  }
+  if (isLoggingOut) return <LogoutLoading message={logoutMessage} />;
 
   return (
     <AuthContext.Provider value={{ 
@@ -485,16 +458,28 @@ const App: React.FC = () => {
       bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
       logs, setLogs, supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
       isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
+      triggerGlobalRefresh,
       addLog, deleteLog, clearLogs, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
       login, logout, updatePassword, updateProfile, isOnline, checkInternet
     }}>
-      <div className="min-h-screen bg-slate-50 flex text-slate-900 font-sans selection:bg-violet-100 selection:text-violet-600">
-        <Sidebar />
-        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64 opacity-50 pointer-events-none md:opacity-100 md:pointer-events-auto' : ''}`}>
-          {renderActiveView()}
-        </main>
-        <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
-      </div>
+      {!user ? (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <LoginForm error={error} loading={loading} />
+          <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
+        </div>
+      ) : user.isFirstLogin ? (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+          <FirstLoginFlow />
+        </div>
+      ) : (
+        <div className="min-h-screen bg-slate-50 flex text-slate-900 font-sans">
+          <Sidebar />
+          <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64 opacity-50 pointer-events-none md:opacity-100 md:pointer-events-auto' : ''}`}>
+            {renderActiveView()}
+          </main>
+          <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };

@@ -7,22 +7,10 @@ const UserProfile: React.FC = () => {
   const { user, updateProfile, setIsSidebarOpen } = useAuth();
   
   const [name, setName] = useState(user?.name || '');
-  const [avatar, setAvatar] = useState(user?.avatar || 'male_shadow');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-
-  const AVATAR_OPTIONS = [
-    { 
-      id: 'male_shadow', 
-      label: 'Sombra Masc.', 
-    },
-    { 
-      id: 'female_shadow', 
-      label: 'Sombra Fem.', 
-    }
-  ];
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +28,8 @@ const UserProfile: React.FC = () => {
 
     setIsSaving(true);
     try {
-      await updateProfile(name, avatar, password || undefined);
+      // Fixamos o avatar como 'male_shadow' que é o padrão do sistema
+      await updateProfile(name, 'male_shadow', password || undefined);
       setMessage({ text: 'Dados atualizados com sucesso!', type: 'success' });
       setPassword('');
       setConfirmPassword('');
@@ -68,36 +57,23 @@ const UserProfile: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm text-center">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Identidade Visual</h3>
+          <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-center">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">Avatar Oficial</h3>
             
-            <div className="relative inline-block mb-8">
+            <div className="relative inline-block">
               <div className="w-32 h-32 rounded-[2.5rem] border-4 border-slate-50 shadow-inner overflow-hidden bg-slate-100 flex items-center justify-center">
-                <AvatarIcon type={avatar} className="w-full h-full" />
+                <AvatarIcon type="male_shadow" className="w-full h-full" />
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-violet-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                <i className="fas fa-shield-halved text-[10px]"></i>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4">
-              {AVATAR_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setAvatar(opt.id)}
-                  className={`relative w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all ${
-                    avatar === opt.id ? 'border-violet-500 bg-violet-50' : 'border-slate-100 bg-slate-50'
-                  }`}
-                  title={opt.label}
-                >
-                  <AvatarIcon type={opt.id} className="w-10 h-10" />
-                  {avatar === opt.id && (
-                    <div className="absolute -top-1 -right-1 bg-violet-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[8px]">
-                      <i className="fas fa-check"></i>
-                    </div>
-                  )}
-                </button>
-              ))}
+            <div className="mt-8 pt-6 border-t border-slate-50">
+               <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] leading-relaxed">
+                 Identidade Digital<br/>Padronizada Infinity
+               </p>
             </div>
-            <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Silhueta Infinity</p>
           </div>
         </div>
 
