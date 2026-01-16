@@ -5,7 +5,7 @@ import { useAuth } from '../App';
 import { AvatarIcon } from './Sidebar';
 
 const AdminPanel: React.FC = () => {
-  const { allUsers, setAllUsers, deleteUserFromDb, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet, saveCategoriesBatch, saveBankAccountsBatch, setIsSystemLocked } = useAuth();
+  const { allUsers, setAllUsers, deleteUserFromDb, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet, saveCategoriesBatch, saveBankAccountsBatch } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,7 +14,6 @@ const AdminPanel: React.FC = () => {
   const [showAdminRoleConfirm, setShowAdminRoleConfirm] = useState(false);
   const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
   const [showDuplicateError, setShowDuplicateError] = useState(false);
-  const [showKickAllConfirm, setShowKickAllConfirm] = useState(false);
   const [showGenericConfirm, setShowGenericConfirm] = useState<{
     show: boolean;
     type: 'reset' | 'status';
@@ -112,7 +111,7 @@ const AdminPanel: React.FC = () => {
       };
       const newAllUsers = allUsers.map(u => u.uid === editingUser.uid ? updatedUser : u);
       await setAllUsers(newAllUsers);
-      if (loggedAdmin) addLog(loggedAdmin, 'edit_user', `Perfil atualizado | Usuário Alvo: ${editingUser.name} | Status: ${formData.isActive ? 'Ativo' : 'Suspenso'}`);
+      if (loggedAdmin) addLog(loggedAdmin, 'edit_user', `Perfil atualizado | Usuário Alvo: ${editingUser.name}`);
     } else {
       const newUid = crypto.randomUUID();
       const newUser: User = {
@@ -127,19 +126,14 @@ const AdminPanel: React.FC = () => {
       
       await setAllUsers([...allUsers, newUser]);
 
-      // Categorias Padrão para novo usuário
       const defaultCategories: any[] = [
         { id: crypto.randomUUID(), userId: newUid, name: 'Salário', type: 'income', icon: 'fa-money-bill-wave', color: '#10b981' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Moradia', type: 'expense', icon: 'fa-house', color: '#ef4444' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Alimentação', type: 'expense', icon: 'fa-utensils', color: '#f59e0b' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Transporte', type: 'expense', icon: 'fa-car', color: '#3b82f6' }
+        { id: crypto.randomUUID(), userId: newUid, name: 'Moradia', type: 'expense', icon: 'fa-house', color: '#ef4444' }
       ];
       await saveCategoriesBatch(defaultCategories);
 
-      // Contas Padrão para novo usuário
       const defaultAccounts: BankAccount[] = [
-        { id: crypto.randomUUID(), userId: newUid, name: 'Carteira', type: 'cash', bankName: 'Dinheiro' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Conta Principal', type: 'checking', bankName: 'Banco' }
+        { id: crypto.randomUUID(), userId: newUid, name: 'Carteira', type: 'cash', bankName: 'Dinheiro' }
       ];
       await saveBankAccountsBatch(defaultAccounts);
 
@@ -184,18 +178,6 @@ const AdminPanel: React.FC = () => {
     closeModal();
   };
 
-  const handleKickAll = async () => {
-    if (!checkInternet() || !loggedAdmin) return;
-    if (adminPasswordConfirm !== loggedAdmin.password) {
-      setSecurityError('Senha administrativa incorreta.');
-      return;
-    }
-    await setIsSystemLocked(true);
-    addLog(loggedAdmin, 'edit_user', 'Acesso global bloqueado: Todos usuários Platinum desconectados.');
-    setShowKickAllConfirm(false);
-    setAdminPasswordConfirm('');
-  };
-
   const confirmResetPassword = async () => {
     if (!checkInternet()) return;
     const u = showGenericConfirm.user;
@@ -216,111 +198,67 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-600 shadow-sm transition-all"
-            >
-              <i className="fas fa-bars text-sm"></i>
-            </button>
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-slate-800">Membros</h2>
-              <p className="text-xs md:text-sm text-slate-500">Gestão de Licenças Infinity</p>
-            </div>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 shadow-sm"
+          >
+            <i className="fas fa-bars text-sm"></i>
+          </button>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-slate-800">Membros</h2>
+            <p className="text-xs md:text-sm text-slate-500">Gestão de Licenças Infinity</p>
           </div>
-          <button 
-            onClick={() => openModal()}
-            className="bg-violet-600 hover:bg-violet-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all font-medium text-sm"
-          >
-            <i className="fas fa-user-plus text-xs"></i>
-            Novo Membro
-          </button>
         </div>
-
-        {/* Botão de Desconexão Global - Logo abaixo do título */}
-        <div className="pt-2">
-          <button 
-            onClick={() => {
-              setAdminPasswordConfirm('');
-              setSecurityError('');
-              setShowKickAllConfirm(true);
-            }}
-            className="group flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-[0.1em] shadow-sm active:scale-95"
-          >
-            <i className="fas fa-plug-circle-xmark text-xs group-hover:rotate-12 transition-transform"></i>
-            Desconectar Todos os Usuários Online
-          </button>
-        </div>
+        <button 
+          onClick={() => openModal()}
+          className="bg-violet-600 hover:bg-violet-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all font-medium text-sm"
+        >
+          <i className="fas fa-user-plus text-xs"></i>
+          Novo Membro
+        </button>
       </div>
 
       <div className="mb-6 relative group">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-violet-500 transition-colors">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400">
           <i className="fas fa-search text-sm"></i>
         </div>
         <input 
           type="text"
-          placeholder="Pesquisar por nome ou usuário..."
+          placeholder="Pesquisar membros..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 md:py-4 rounded-2xl bg-white border border-slate-100 shadow-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all text-sm text-slate-700 font-medium"
+          className="w-full pl-11 pr-4 py-3 md:py-4 rounded-2xl bg-white border border-slate-100 shadow-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
         />
       </div>
 
       <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="w-full text-left table-fixed md:table-auto">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">Membro</th>
-                <th className="px-2 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">Nível</th>
-                <th className="px-2 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Acesso</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Gerenciar</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Membro</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Nível</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-center">Acesso</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-right">Gerenciar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((u) => {
-                const today = new Date().toISOString().split('T')[0];
-                const isAutoSuspended = u.suspensionDate && today >= u.suspensionDate;
-
-                return (
-                  <tr key={u.uid} className="group hover:bg-slate-50 transition-colors">
-                    <td className="px-3 md:px-6 py-3 md:py-5">
-                      <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
-                        <div className="bg-slate-50 w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-100">
-                          <AvatarIcon type={u.avatar || 'male_shadow'} className="w-full h-full" />
-                        </div>
-                        <div className="truncate">
-                          <p className="font-bold text-slate-800 text-xs md:text-base truncate">{u.name}</p>
-                          <p className="text-[9px] md:text-xs text-slate-400 opacity-60">@{u.username}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2 md:px-6 py-3 md:py-5">
-                      <span className={`text-[9px] md:text-xs font-bold py-0.5 px-2 rounded border ${u.role === 'admin' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                        {u.role === 'admin' ? 'ADM' : 'PLAT'}
-                      </span>
-                    </td>
-                    <td className="px-2 md:px-6 py-3 md:py-5 text-center">
-                      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[9px] font-black ${
-                        u.isActive && !isAutoSuspended ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${u.isActive && !isAutoSuspended ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                        {(u.isActive && !isAutoSuspended) ? 'ATIVO' : 'BLOQUEADO'}
-                      </div>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-5 text-right">
-                      <button 
-                        onClick={() => openModal(u)}
-                        className="w-8 h-8 md:w-10 md:h-10 inline-flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200 rounded-lg md:rounded-xl transition-all"
-                      >
-                        <i className="fas fa-ellipsis-v text-xs"></i>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filteredUsers.map((u) => (
+                <tr key={u.uid} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 font-bold text-slate-800">{u.name}</td>
+                  <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{u.role === 'admin' ? 'ADM' : 'PLATINUM'}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${u.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                      {u.isActive ? 'ATIVO' : 'SUSPENSO'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button onClick={() => openModal(u)} className="text-slate-400 hover:text-violet-600"><i className="fas fa-pen"></i></button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -329,130 +267,24 @@ const AdminPanel: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-              <h3 className="text-lg md:text-xl font-bold text-slate-800">
-                {editingUser ? 'Gerenciar Membro' : 'Novo Membro'}
-              </h3>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
-                <i className="fas fa-times text-xl"></i>
-              </button>
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold">Gerenciar Membro</h3>
+              <button onClick={closeModal} className="text-slate-400"><i className="fas fa-times"></i></button>
             </div>
-
-            <div className="p-6 md:p-8 space-y-8 max-h-[75vh] overflow-y-auto">
-              <form onSubmit={handleSaveAttempt} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-tight">Nome Completo</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-tight">Username</label>
-                    <input
-                      type="text"
-                      required
-                      disabled={!!editingUser}
-                      value={formData.username}
-                      onChange={(e) => setFormData({...formData, username: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-tight">Perfil</label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold"
-                    >
-                      <option value="user">Platinum</option>
-                      <option value="admin">Administrador</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-tight">Validade da Licença</label>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      type="button"
-                      disabled={formData.role === 'admin'}
-                      onClick={() => setAccessType('permanent')}
-                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${
-                        accessType === 'permanent' ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-white border-slate-200 text-slate-400'
-                      }`}
-                    >
-                      Vitalícia
-                    </button>
-                    <button 
-                      type="button"
-                      disabled={formData.role === 'admin'}
-                      onClick={() => setAccessType('temporary')}
-                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${
-                        accessType === 'temporary' ? 'bg-violet-100 border-violet-200 text-violet-700' : 'bg-white border-slate-200 text-slate-400'
-                      }`}
-                    >
-                      Temporária
-                    </button>
-                  </div>
-                  {accessType === 'temporary' && formData.role !== 'admin' && (
-                    <input
-                      type="date"
-                      required
-                      value={formData.suspensionDate}
-                      onChange={(e) => setFormData({...formData, suspensionDate: e.target.value})}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold"
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <button type="submit" className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold shadow-lg transition-all">
-                    {editingUser ? 'Salvar Configurações' : 'Cadastrar Membro'}
-                  </button>
-                </div>
+            <div className="p-6 space-y-6">
+              <form onSubmit={handleSaveAttempt} className="space-y-4">
+                <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200" placeholder="Nome" />
+                <input type="text" disabled value={formData.username} className="w-full px-4 py-3 rounded-xl border bg-slate-50 text-slate-400" />
+                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})} className="w-full px-4 py-3 rounded-xl border border-slate-200">
+                  <option value="user">Platinum</option>
+                  <option value="admin">Administrador</option>
+                </select>
+                <button type="submit" className="w-full py-4 bg-violet-600 text-white rounded-xl font-bold">Salvar</button>
               </form>
-
               {editingUser && (
-                <div className="pt-8 border-t border-slate-100 space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Ações de Suporte</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={() => setShowGenericConfirm({ show: true, type: 'reset', user: editingUser })}
-                      className="flex items-center justify-center gap-2 p-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
-                    >
-                      Resetar Senha
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setShowGenericConfirm({ show: true, type: 'status', user: editingUser })}
-                      disabled={editingUser.username === 'root'}
-                      className={`flex items-center justify-center gap-2 p-3 border rounded-xl text-xs font-bold transition-all ${
-                        formData.isActive 
-                          ? 'border-rose-100 text-rose-500 hover:bg-rose-50' 
-                          : 'border-emerald-100 text-emerald-600 hover:bg-emerald-50'
-                      }`}
-                    >
-                      {formData.isActive ? 'Suspender' : 'Ativar'}
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setAdminPasswordConfirm('');
-                        setSecurityError('');
-                        setShowDeleteConfirm(true);
-                      }}
-                      disabled={editingUser.username === 'root'}
-                      className="col-span-2 p-3 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold"
-                    >
-                      Excluir Conta
-                    </button>
-                  </div>
+                <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
+                  <button onClick={() => setShowGenericConfirm({ show: true, type: 'reset', user: editingUser })} className="p-3 border rounded-xl text-xs font-bold text-slate-600">Resetar Senha</button>
+                  <button onClick={() => setShowGenericConfirm({ show: true, type: 'status', user: editingUser })} className="p-3 border rounded-xl text-xs font-bold text-rose-600">Toggle Status</button>
                 </div>
               )}
             </div>
@@ -460,155 +292,25 @@ const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Desconectar Todos */}
-      {showKickAllConfirm && (
+      {showAdminRoleConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-amber-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl animate-pulse">
-              <i className="fas fa-plug-circle-xmark"></i>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Desconexão Forçada</h3>
-              <p className="text-sm text-slate-500">Isso ativará o modo de manutenção e desconectará imediatamente todos os usuários Platinum online.</p>
-            </div>
-            <div className="space-y-4">
-              <input 
-                type="password"
-                placeholder="Confirme sua senha admin"
-                value={adminPasswordConfirm}
-                onChange={(e) => setAdminPasswordConfirm(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 outline-none text-center font-bold"
-              />
-              {securityError && <p className="text-xs text-rose-600 font-bold">{securityError}</p>}
-            </div>
-            <div className="flex flex-col gap-3">
-              <button onClick={handleKickAll} className="w-full py-4 bg-amber-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-amber-700 transition-all">Confirmar Expulsão</button>
-              <button onClick={() => setShowKickAllConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
-            </div>
+          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 text-center space-y-4">
+            <h3 className="text-xl font-bold">Elevar Privilégios?</h3>
+            <p className="text-sm text-slate-500">Confirme sua senha administrativa para promover este usuário.</p>
+            <input type="password" placeholder="Sua senha admin" value={adminPasswordConfirm} onChange={(e) => setAdminPasswordConfirm(e.target.value)} className="w-full px-4 py-3 rounded-xl border text-center font-bold" />
+            {securityError && <p className="text-xs text-rose-600">{securityError}</p>}
+            <button onClick={confirmAdminRoleSave} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl">Confirmar</button>
+            <button onClick={() => setShowAdminRoleConfirm(false)} className="w-full py-2 text-slate-400">Cancelar</button>
           </div>
         </div>
       )}
 
-      {/* Outros modais (Reset, Status, Sucesso, Erro, AdminRole) permanecem inalterados mas garantindo o estilo sombra nos avatares */}
       {showGenericConfirm.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div className={`w-20 h-20 mx-auto rounded-[2rem] flex items-center justify-center text-3xl shadow-inner ${
-              showGenericConfirm.type === 'reset' ? 'bg-violet-50 text-violet-600' : (formData.isActive ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600')
-            }`}>
-              <i className={`fas ${showGenericConfirm.type === 'reset' ? 'fa-key' : (formData.isActive ? 'fa-user-slash' : 'fa-user-check')}`}></i>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-slate-800">
-                {showGenericConfirm.type === 'reset' ? 'Confirmar Reset?' : (formData.isActive ? 'Suspender Usuário?' : 'Ativar Usuário?')}
-              </h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                {showGenericConfirm.type === 'reset' 
-                  ? 'A senha será redefinida para o username padrão.' 
-                  : `Deseja realmente ${formData.isActive ? 'suspender' : 'reativar'} o acesso deste membro?`}
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={showGenericConfirm.type === 'reset' ? confirmResetPassword : confirmStatusToggle}
-                className={`w-full py-4 text-white font-bold rounded-2xl shadow-lg transition-all ${
-                  showGenericConfirm.type === 'reset' ? 'bg-violet-600 hover:bg-violet-700' : (formData.isActive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700')
-                }`}
-              >
-                Confirmar Ação
-              </button>
-              <button onClick={() => setShowGenericConfirm({ ...showGenericConfirm, show: false })} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Sucesso Reset */}
-      {showResetSuccessModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner animate-bounce-subtle">
-              <i className="fas fa-check-circle"></i>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-slate-800">Senha Resetada!</h3>
-              <p className="text-sm text-slate-500">O membro agora deve utilizar o username como senha para o próximo acesso.</p>
-            </div>
-            <button onClick={() => setShowResetSuccessModal(false)} className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl hover:bg-slate-800 transition-all">Entendido</button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Exclusão com Senha Admin */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-rose-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl">
-              <i className="fas fa-user-xmark"></i>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-slate-800">Remoção Irreversível</h3>
-              <p className="text-sm text-slate-500">Confirme sua senha administrativa para remover permanentemente este membro.</p>
-            </div>
-            <div className="space-y-4">
-              <input 
-                type="password"
-                placeholder="Sua senha admin"
-                value={adminPasswordConfirm}
-                onChange={(e) => setAdminPasswordConfirm(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 outline-none text-center font-bold"
-              />
-              {securityError && <p className="text-xs text-rose-600 font-bold">{securityError}</p>}
-            </div>
-            <div className="flex flex-col gap-3">
-              <button onClick={handleFinalDelete} className="w-full py-4 bg-rose-600 text-white font-bold rounded-2xl shadow-lg hover:bg-rose-700 transition-all">Confirmar Exclusão</button>
-              <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Erro Duplicidade */}
-      {showDuplicateError && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-amber-50 text-amber-500 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner">
-              <i className="fas fa-id-badge"></i>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-slate-800">Conflito de Usuário</h3>
-              <p className="text-sm text-slate-500">Este username já está em uso por outro membro do Personalle Infinity.</p>
-            </div>
-            <button onClick={() => setShowDuplicateError(false)} className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl transition-all">Tentar Outro</button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Confirmação de Novo Admin */}
-      {showAdminRoleConfirm && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl animate-pulse">
-              <i className="fas fa-shield-alt"></i>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-slate-800">Elevar Privilégios?</h3>
-              <p className="text-sm text-slate-500">Você está promovendo este usuário a Administrador. Digite sua senha para confirmar.</p>
-            </div>
-            <div className="space-y-4">
-              <input 
-                type="password"
-                placeholder="Sua senha admin"
-                value={adminPasswordConfirm}
-                onChange={(e) => setAdminPasswordConfirm(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-center font-bold"
-              />
-              {securityError && <p className="text-xs text-rose-600 font-bold">{securityError}</p>}
-            </div>
-            <div className="flex flex-col gap-3">
-              <button onClick={confirmAdminRoleSave} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-all">Confirmar Promoção</button>
-              <button onClick={() => setShowAdminRoleConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
-            </div>
+          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 text-center space-y-4">
+             <h3 className="text-xl font-bold">Confirmar Ação?</h3>
+             <button onClick={showGenericConfirm.type === 'reset' ? confirmResetPassword : confirmStatusToggle} className="w-full py-4 bg-violet-600 text-white font-bold rounded-2xl">Confirmar</button>
+             <button onClick={() => setShowGenericConfirm({...showGenericConfirm, show: false})} className="w-full py-2 text-slate-400">Voltar</button>
           </div>
         </div>
       )}

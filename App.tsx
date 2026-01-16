@@ -94,7 +94,7 @@ const LogoutLoading: React.FC = () => (
         <h2 className="text-white text-xl font-black tracking-tight">Personalle Infinity</h2>
         <div className="flex items-center justify-center gap-3">
           <i className="fas fa-circle-notch animate-spin text-violet-400 text-sm"></i>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Encerrando sessão com segurança...</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Sessão encerrada pelo administrador...</p>
         </div>
       </div>
     </div>
@@ -153,30 +153,6 @@ const App: React.FC = () => {
     }
     return true;
   }, []);
-
-  const addLog = useCallback(async (userToLog: User, action: LogAction, details?: string) => {
-    if (!isLoggingEnabled) return;
-    
-    // Filtro estrito conforme solicitado: Apenas registros, alterações e exclusões
-    const adminActions: LogAction[] = ['create_user', 'edit_user', 'delete_user'];
-    if (!adminActions.includes(action)) return;
-
-    const newLog: SystemLog = {
-      id: crypto.randomUUID(),
-      userId: userToLog.uid,
-      userName: userToLog.name,
-      action,
-      timestamp: new Date().toISOString(),
-      details
-    };
-    
-    // Atualiza o estado local para feedback imediato
-    setLogsState(prev => [newLog, ...prev]);
-    
-    // Persiste no banco de dados
-    const { error } = await supabase.from('logs').insert(newLog);
-    if (error) console.error("Falha ao salvar log no banco:", error);
-  }, [isLoggingEnabled]);
 
   const logout = useCallback(async () => {
     setIsSidebarOpen(false);
@@ -250,11 +226,39 @@ const App: React.FC = () => {
 
   }, [logout]);
 
+  // Polling de 10 segundos para manter o sistema "vivo" e monitorar ordens de desconexão
   useEffect(() => {
+    let interval: any;
     if (user) {
       fetchData(user);
+      interval = setInterval(() => {
+        if (userRef.current) fetchData(userRef.current);
+      }, 10000);
     }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [user, fetchData]);
+
+  const addLog = useCallback(async (userToLog: User, action: LogAction, details?: string) => {
+    if (!isLoggingEnabled) return;
+    
+    const adminActions: LogAction[] = ['create_user', 'edit_user', 'delete_user'];
+    if (!adminActions.includes(action)) return;
+
+    const newLog: SystemLog = {
+      id: crypto.randomUUID(),
+      userId: userToLog.uid,
+      userName: userToLog.name,
+      action,
+      timestamp: new Date().toISOString(),
+      details
+    };
+    
+    setLogsState(prev => [newLog, ...prev]);
+    const { error } = await supabase.from('logs').insert(newLog);
+    if (error) console.error("Falha ao salvar log:", error);
+  }, [isLoggingEnabled]);
 
   const login = async (username: string, pass: string) => {
     setLoading(true);
@@ -408,12 +412,9 @@ const App: React.FC = () => {
   };
 
   const clearLogs = async () => {
-    // Filtro temporal amplo para garantir que o banco execute o delete total sem falha de tipagem no UUID
     const { error } = await supabase.from('logs').delete().gt('timestamp', '1970-01-01T00:00:00Z');
     if (!error) {
       setLogsState([]);
-    } else {
-      console.error("Erro crítico ao limpar logs no banco:", error);
     }
   };
 
@@ -470,26 +471,6 @@ const App: React.FC = () => {
       }}>
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
           <LoginForm error={error} loading={loading} />
-          <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
-        </div>
-      </AuthContext.Provider>
-    );
-  }
-
-  if (user.isFirstLogin) {
-    return (
-      <AuthContext.Provider value={{ 
-        user, allUsers, setAllUsers, saveUser, deleteUserFromDb,
-        categories, saveCategory, saveCategoriesBatch, deleteCategory,
-        transactions, saveTransaction, saveTransactions, deleteTransactionFromDb,
-        bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
-        logs, setLogs, supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
-        isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
-        addLog, deleteLog, clearLogs, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
-        login, logout, updatePassword, updateProfile, isOnline, checkInternet
-      }}>
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-          <FirstLoginFlow />
           <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
         </div>
       </AuthContext.Provider>
