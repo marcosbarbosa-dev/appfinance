@@ -1,5 +1,5 @@
 
-import React, { useState, createContext, useContext, useEffect, useCallback } from 'react';
+import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
 import { User, Category, Transaction, BankAccount, SystemLog, LogAction } from './types';
 import { supabase } from './supabase';
 import LoginForm from './components/LoginForm';
@@ -100,57 +100,15 @@ const LogoutLoading: React.FC = () => (
   </div>
 );
 
-const AdminDashboard: React.FC = () => {
-  const { allUsers, setIsSidebarOpen } = useAuth();
-  
-  const today = new Date().toISOString().split('T')[0];
-
-  const activeMembers = allUsers.filter(u => {
-    const isAutoSuspended = u.suspensionDate && today >= u.suspensionDate;
-    return u.isActive && !isAutoSuspended;
-  }).length;
-
-  const suspendedMembers = allUsers.filter(u => {
-    const isAutoSuspended = u.suspensionDate && today >= u.suspensionDate;
-    return !u.isActive || isAutoSuspended;
-  }).length;
-
-  return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setIsSidebarOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 shadow-sm transition-all"><i className="fas fa-bars"></i></button>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Painel Administrativo</h2>
-          <p className="text-slate-500 text-sm">Visão geral do sistema Personalle Infinity</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center mb-4"><i className="fas fa-users text-xl"></i></div>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Usuários Cadastrados</p>
-          <h3 className="text-3xl font-black text-slate-800">{allUsers.length}</h3>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4"><i className="fas fa-user-check text-xl"></i></div>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Membros Ativos</p>
-          <h3 className="text-3xl font-black text-slate-800">{activeMembers}</h3>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4"><i className="fas fa-user-slash text-xl"></i></div>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Membros Suspensos</p>
-          <h3 className="text-3xl font-black text-slate-800">{suspendedMembers}</h3>
-        </div>
-      </div>
-      <div className="mt-8 p-6 bg-violet-600 rounded-3xl text-white shadow-xl shadow-violet-100">
-        <h4 className="text-lg font-bold mb-2">Bem-vindo ao Controle Central</h4>
-        <p className="text-violet-100 text-sm opacity-90 leading-relaxed">Utilize o menu lateral para gerenciar usuários, visualizar logs de auditoria e configurar as informações de suporte do sistema.</p>
-      </div>
-    </div>
-  );
-};
-
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
+  // Inicialização tentando ler do LocalStorage para persistência
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('personalle_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
+  const userRef = useRef<User | null>(user);
+
   const [allUsers, setAllUsersState] = useState<User[]>([]);
   const [categories, setCategoriesState] = useState<Category[]>([]);
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
@@ -168,20 +126,146 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflineAlert, setShowOfflineAlert] = useState(false);
 
-  // Sync Logic
-  const saveUser = async (userData: User) => {
-    const { error } = await supabase.from('users').upsert(userData);
-    if (!error) setAllUsersState(prev => {
-      const exists = prev.find(u => u.uid === userData.uid);
-      return exists ? prev.map(u => u.uid === userData.uid ? userData : u) : [...prev, userData];
-    });
-  };
+  // Sincronizar user com userRef e LocalStorage
+  useEffect(() => {
+    userRef.current = user;
+    if (user) {
+      localStorage.setItem('personalle_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('personalle_user');
+    }
+  }, [user]);
 
-  const deleteUserFromDb = async (uid: string) => {
-    const { error } = await supabase.from('users').delete().eq('uid', uid);
-    if (!error) setAllUsersState(prev => prev.filter(u => u.uid !== uid));
-  };
+  const logout = useCallback(async () => {
+    if (userRef.current && userRef.current.role === 'admin') { addLog(userRef.current, 'logout'); }
+    setIsSidebarOpen(false);
+    setIsLoggingOut(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setUser(null);
+    setIsLoggingOut(false);
+    setActiveView('inicio');
+    setError(null);
+  }, []);
 
+  const fetchData = useCallback(async (loggedInUser: User) => {
+    const isAdmin = loggedInUser.role === 'admin';
+    
+    // Verificação de Integridade: Pegar status atualizado do usuário no banco
+    const { data: currentUserStatus } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
+    
+    if (currentUserStatus) {
+      const today = new Date().toISOString().split('T')[0];
+      const isSuspendedByDate = currentUserStatus.suspensionDate && today >= currentUserStatus.suspensionDate;
+      
+      // Se o usuário foi bloqueado/suspenso enquanto estava fora, desloga ele
+      if (!currentUserStatus.isActive || isSuspendedByDate) {
+        logout();
+        return;
+      }
+      
+      // Atualiza o estado local com os dados mais recentes (nome, avatar alterados pelo admin)
+      setUser(currentUserStatus);
+    } else {
+      // Se o usuário não existe mais no banco, remove a sessão local
+      logout();
+      return;
+    }
+
+    if (isAdmin) {
+      const { data: usersData } = await supabase.from('users').select('*');
+      if (usersData) setAllUsersState(usersData);
+    }
+
+    const { data: catsData } = await supabase.from('categories').select('*').or(`userId.eq.${loggedInUser.uid},userId.is.null`);
+    if (catsData) setCategoriesState(catsData);
+    
+    const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
+    if (accsData) setBankAccountsState(accsData);
+    
+    const { data: transData } = await supabase.from('transactions').select('*').eq('userId', loggedInUser.uid);
+    if (transData) setTransactionsState(transData);
+    
+    const logQuery = isAdmin 
+      ? supabase.from('logs').select('*').order('timestamp', { ascending: false }) 
+      : supabase.from('logs').select('*').eq('userId', loggedInUser.uid).order('timestamp', { ascending: false });
+    const { data: logsData } = await logQuery;
+    if (logsData) setLogsState(logsData);
+    
+    const { data: configData } = await supabase.from('app_config').select('*');
+    if (configData) {
+      const support = configData.find(d => d.id === 'support');
+      if (support) setSupportInfoState(support.content);
+      const maintenance = configData.find(d => d.id === 'maintenance_message');
+      if (maintenance) setMaintenanceMessageState(maintenance.content);
+      const logging = configData.find(d => d.id === 'logging_enabled');
+      if (logging) setIsLoggingEnabledState(logging.content === 'true');
+      const locked = configData.find(d => d.id === 'system_locked');
+      if (locked) setIsSystemLockedState(locked.content === 'true');
+    }
+  }, [logout]);
+
+  // Carregar dados se houver usuário persistido no Boot
+  useEffect(() => {
+    if (user) {
+      fetchData(user);
+    }
+  }, []); // Só roda uma vez no mount
+
+  // Listeners Globais de Real-time
+  useEffect(() => {
+    const configChannel = supabase
+      .channel('global_configs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_config' }, (payload: any) => {
+        const newRecord = payload.new;
+        if (newRecord.id === 'system_locked') setIsSystemLockedState(newRecord.content === 'true');
+        else if (newRecord.id === 'maintenance_message') setMaintenanceMessageState(newRecord.content);
+        else if (newRecord.id === 'support') setSupportInfoState(newRecord.content);
+      })
+      .subscribe();
+
+    const usersChannel = supabase
+      .channel('users_global_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload: any) => {
+        const updatedRecord = payload.new;
+        const currentLoggedUser = userRef.current;
+
+        if (currentLoggedUser && updatedRecord.uid === currentLoggedUser.uid) {
+          const today = new Date().toISOString().split('T')[0];
+          const isSuspendedByDate = updatedRecord.suspensionDate && today >= updatedRecord.suspensionDate;
+          
+          if (!updatedRecord.isActive || isSuspendedByDate) {
+            logout();
+          } else {
+            setUser(updatedRecord);
+          }
+        }
+
+        if (currentLoggedUser?.role === 'admin') {
+          setAllUsersState(prev => {
+            if (payload.eventType === 'INSERT') return [...prev, updatedRecord];
+            if (payload.eventType === 'UPDATE') return prev.map(u => u.uid === updatedRecord.uid ? updatedRecord : u);
+            if (payload.eventType === 'DELETE') return prev.filter(u => u.uid !== payload.old.uid);
+            return prev;
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(configChannel);
+      supabase.removeChannel(usersChannel);
+    };
+  }, [logout]);
+
+  useEffect(() => {
+    if (isSystemLocked && user && user.role !== 'admin') {
+      logout();
+    }
+  }, [isSystemLocked, user, logout]);
+
+  // Restante das funções de salvamento (Persistência Supabase)
+  const saveUser = async (userData: User) => { await supabase.from('users').upsert(userData); };
+  const deleteUserFromDb = async (uid: string) => { await supabase.from('users').delete().eq('uid', uid); };
   const setAllUsers = async (users: User[]) => {
     setAllUsersState(users);
     await supabase.from('users').upsert(users);
@@ -189,9 +273,8 @@ const App: React.FC = () => {
 
   const saveCategory = async (cat: Category) => {
     if (!user) return;
-    const payload = { ...cat, userId: cat.userId || user.uid };
-    const { error } = await supabase.from('categories').upsert(payload);
-    if (!error && (!cat.userId || cat.userId === user.uid)) {
+    await supabase.from('categories').upsert({ ...cat, userId: cat.userId || user.uid });
+    if (!cat.userId || cat.userId === user.uid) {
       setCategoriesState(prev => {
         const exists = prev.find(c => c.id === cat.id);
         return exists ? prev.map(c => c.id === cat.id ? cat : c) : [...prev, cat];
@@ -199,53 +282,36 @@ const App: React.FC = () => {
     }
   };
 
-  const saveCategoriesBatch = async (cats: Category[]) => {
-     const { error } = await supabase.from('categories').insert(cats);
-     if (!error && cats[0]?.userId === user?.uid) {
-       setCategoriesState(prev => [...cats, ...prev]);
-     }
-  };
-
+  const saveCategoriesBatch = async (cats: Category[]) => { await supabase.from('categories').insert(cats); };
   const deleteCategory = async (id: string) => {
-    const { error } = await supabase.from('categories').delete().eq('id', id);
-    if (!error) setCategoriesState(prev => prev.filter(c => c.id !== id));
+    await supabase.from('categories').delete().eq('id', id);
+    setCategoriesState(prev => prev.filter(c => c.id !== id));
   };
 
   const saveTransaction = async (t: Transaction) => {
     if (!user) return;
-    const payload = { ...t, userId: user.uid };
-    const { error } = await supabase.from('transactions').upsert(payload);
-    if (!error) {
-      setTransactionsState(prev => {
-        const exists = prev.find(tr => tr.id === t.id);
-        return exists ? prev.map(tr => tr.id === t.id ? t : tr) : [t, ...prev];
-      });
-    } else {
-      console.error("Erro ao salvar transação:", error.message);
-    }
+    await supabase.from('transactions').upsert({ ...t, userId: user.uid });
+    setTransactionsState(prev => {
+      const exists = prev.find(tr => tr.id === t.id);
+      return exists ? prev.map(tr => tr.id === t.id ? t : tr) : [t, ...prev];
+    });
   };
 
   const saveTransactions = async (ts: Transaction[]) => {
     if (!user) return;
-    const payload = ts.map(t => ({ ...t, userId: user.uid }));
-    const { error } = await supabase.from('transactions').upsert(payload);
-    if (!error) {
-      setTransactionsState(prev => [...ts, ...prev]);
-    } else {
-      console.error("Erro ao salvar lote de transações:", error.message);
-    }
+    await supabase.from('transactions').upsert(ts.map(t => ({ ...t, userId: user.uid })));
+    setTransactionsState(prev => [...ts, ...prev]);
   };
 
   const deleteTransactionFromDb = async (id: string) => {
-    const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (!error) setTransactionsState(prev => prev.filter(t => t.id !== id));
+    await supabase.from('transactions').delete().eq('id', id);
+    setTransactionsState(prev => prev.filter(t => t.id !== id));
   };
 
   const saveBankAccount = async (acc: BankAccount) => {
     if (!user) return;
-    const payload = { ...acc, userId: acc.userId || user.uid };
-    const { error } = await supabase.from('bank_accounts').upsert(payload);
-    if (!error && (!acc.userId || acc.userId === user.uid)) {
+    await supabase.from('bank_accounts').upsert({ ...acc, userId: acc.userId || user.uid });
+    if (!acc.userId || acc.userId === user.uid) {
       setBankAccountsState(prev => {
         const exists = prev.find(a => a.id === acc.id);
         return exists ? prev.map(a => a.id === acc.id ? acc : a) : [...prev, acc];
@@ -253,16 +319,10 @@ const App: React.FC = () => {
     }
   };
 
-  const saveBankAccountsBatch = async (accs: BankAccount[]) => {
-     const { error } = await supabase.from('bank_accounts').insert(accs);
-     if (!error && accs[0]?.userId === user?.uid) {
-       setBankAccountsState(prev => [...accs, ...prev]);
-     }
-  };
-
+  const saveBankAccountsBatch = async (accs: BankAccount[]) => { await supabase.from('bank_accounts').insert(accs); };
   const deleteBankAccount = async (id: string) => {
-    const { error } = await supabase.from('bank_accounts').delete().eq('id', id);
-    if (!error) setBankAccountsState(prev => prev.filter(a => a.id !== id));
+    await supabase.from('bank_accounts').delete().eq('id', id);
+    setBankAccountsState(prev => prev.filter(a => a.id !== id));
   };
 
   const setLogs = async (l: SystemLog[]) => {
@@ -290,86 +350,12 @@ const App: React.FC = () => {
     await supabase.from('app_config').upsert({ id: 'system_locked', content: locked.toString() });
   };
 
-  const logout = useCallback(async () => {
-    if (user && user.role === 'admin') { addLog(user, 'logout'); }
-    setIsSidebarOpen(false);
-    setIsLoggingOut(true);
-    // Tempo reduzido para 1.5 segundos conforme solicitado
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setUser(null);
-    setIsLoggingOut(false);
-    setActiveView('inicio');
-  }, [user]);
-
-  // Real-time listener for app configs (System Lock & Messages)
-  useEffect(() => {
-    const channel = supabase
-      .channel('app_config_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'app_config' 
-      }, (payload: any) => {
-        const newRecord = payload.new;
-        if (newRecord.id === 'system_locked') {
-          setIsSystemLockedState(newRecord.content === 'true');
-        } else if (newRecord.id === 'maintenance_message') {
-          setMaintenanceMessageState(newRecord.content);
-        } else if (newRecord.id === 'support') {
-          setSupportInfoState(newRecord.content);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Automatic logout effect when system is locked
-  useEffect(() => {
-    if (isSystemLocked && user && user.role !== 'admin') {
-      logout();
-    }
-  }, [isSystemLocked, user, logout]);
-
-  const fetchData = useCallback(async (loggedInUser: User) => {
-    const isAdmin = loggedInUser.role === 'admin';
-    if (isAdmin) {
-      const { data: usersData } = await supabase.from('users').select('*');
-      if (usersData) setAllUsersState(usersData);
-    }
-    const { data: catsData } = await supabase.from('categories').select('*').or(`userId.eq.${loggedInUser.uid},userId.is.null`);
-    if (catsData) setCategoriesState(catsData);
-    const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
-    if (accsData) setBankAccountsState(accsData);
-    const { data: transData } = await supabase.from('transactions').select('*').eq('userId', loggedInUser.uid);
-    if (transData) setTransactionsState(transData);
-    const logQuery = isAdmin ? supabase.from('logs').select('*').order('timestamp', { ascending: false }) : supabase.from('logs').select('*').eq('userId', loggedInUser.uid).order('timestamp', { ascending: false });
-    const { data: logsData } = await logQuery;
-    if (logsData) setLogsState(logsData);
-    
-    // Fetch initial configs
-    const { data: configData } = await supabase.from('app_config').select('*');
-    if (configData) {
-      const support = configData.find(d => d.id === 'support');
-      if (support) setSupportInfoState(support.content);
-      const maintenance = configData.find(d => d.id === 'maintenance_message');
-      if (maintenance) setMaintenanceMessageState(maintenance.content);
-      const logging = configData.find(d => d.id === 'logging_enabled');
-      if (logging) setIsLoggingEnabledState(logging.content === 'true');
-      const locked = configData.find(d => d.id === 'system_locked');
-      if (locked) setIsSystemLockedState(locked.content === 'true');
-    }
-  }, []);
-
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Initial fetch of configs (can be done without user)
     supabase.from('app_config').select('*').then(({ data }) => {
       if(data) {
         const support = data.find(d => d.id === 'support');
@@ -399,34 +385,19 @@ const App: React.FC = () => {
 
   const addLog = async (userToLog: User, action: LogAction, details?: string) => {
     if (!isLoggingEnabled || userToLog.role !== 'admin') return;
-
-    const newLog: SystemLog = { 
-      id: crypto.randomUUID(), 
-      userId: userToLog.uid, 
-      userName: userToLog.name, 
-      action, 
-      details, 
-      timestamp: new Date().toISOString() 
-    };
-    
+    const newLog: SystemLog = { id: crypto.randomUUID(), userId: userToLog.uid, userName: userToLog.name, action, details, timestamp: new Date().toISOString() };
     setLogsState(prev => [newLog, ...prev]);
     await supabase.from('logs').insert(newLog);
   };
 
   const deleteLog = async (id: string) => {
-    if (!checkInternet()) return;
-    const { error } = await supabase.from('logs').delete().eq('id', id);
-    if (!error) {
-      setLogsState(prev => prev.filter(l => l.id !== id));
-    }
+    await supabase.from('logs').delete().eq('id', id);
+    setLogsState(prev => prev.filter(l => l.id !== id));
   };
 
-  const clearLogs = async ( ) => {
-    if (!checkInternet()) return;
-    const { error } = await supabase.from('logs').delete().not('id', 'is', null);
-    if (!error) {
-      setLogsState([]);
-    }
+  const clearLogs = async () => {
+    await supabase.from('logs').delete().not('id', 'is', null);
+    setLogsState([]);
   };
 
   const login = async (username: string, pass: string) => {
@@ -454,6 +425,7 @@ const App: React.FC = () => {
       setLoading(false);
       return;
     }
+
     if (foundUser.isFirstLogin) {
       if (pass !== foundUser.username) {
         setError("Para primeiro acesso, use a senha padrão (seu usuário).");
@@ -475,37 +447,34 @@ const App: React.FC = () => {
 
   const updatePassword = async (newPass: string) => {
     if (!user) return;
-    if (!checkInternet()) return;
     setLoading(true);
     const now = new Date().toISOString();
-    const { error: updateError } = await supabase.from('users').update({ password: newPass, isFirstLogin: false, updatedAt: now }).eq('uid', user.uid);
-    if (!updateError) { setUser({ ...user, password: newPass, isFirstLogin: false, updatedAt: now }); }
+    const { error } = await supabase.from('users').update({ password: newPass, isFirstLogin: false, updatedAt: now }).eq('uid', user.uid);
+    if (!error) { setUser({ ...user, password: newPass, isFirstLogin: false, updatedAt: now }); }
     setLoading(false);
   };
 
   const updateProfile = async (name: string, avatar: string, password?: string) => {
     if (!user) return;
-    if (!checkInternet()) return;
     setLoading(true);
     const now = new Date().toISOString();
     const updateData: any = { name, avatar, updatedAt: now };
     if (password) updateData.password = password;
-    const { error: updateError } = await supabase.from('users').update(updateData).eq('uid', user.uid);
-    if (!updateError) { setUser({ ...user, ...updateData }); }
+    const { error } = await supabase.from('users').update(updateData).eq('uid', user.uid);
+    if (!error) { setUser({ ...user, ...updateData }); }
     setLoading(false);
   };
 
   const renderContent = () => {
     if (!user) return null;
-
     if (user.role === 'admin') {
       switch (activeView) {
-        case 'dashboard': return <AdminDashboard />;
+        case 'dashboard': return <AdminPanel />; 
         case 'usuarios': return <AdminPanel />;
         case 'logs': return <LogsPanel />;
         case 'meus_dados': return <UserProfile />;
         case 'suporte': return <SupportManager />;
-        default: return <AdminDashboard />;
+        default: return <AdminPanel />;
       }
     } else {
       switch (activeView) {
