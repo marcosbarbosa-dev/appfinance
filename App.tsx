@@ -201,6 +201,21 @@ const App: React.FC = () => {
       return;
     }
 
+    // Monitoramento global de configuração (isSystemLocked)
+    const { data: configData } = await supabase.from('system_config').select('*').single();
+    if (configData) {
+      setSupportInfoState(configData.supportInfo || "");
+      setMaintenanceMessageState(configData.maintenanceMessage || "");
+      setIsLoggingEnabledState(configData.isLoggingEnabled ?? true);
+      setIsSystemLockedState(configData.isSystemLocked ?? false);
+
+      // Deslogar usuários Platinum se o sistema estiver bloqueado
+      if (configData.isSystemLocked && loggedInUser.role !== 'admin') {
+        logout();
+        return;
+      }
+    }
+
     if (currentUserStatus) {
       const today = new Date().toISOString().split('T')[0];
       const isSuspendedByDate = currentUserStatus.suspensionDate && today >= currentUserStatus.suspensionDate;
@@ -233,13 +248,6 @@ const App: React.FC = () => {
     const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
     if (accsData) setBankAccountsState(accsData);
 
-    const { data: configData } = await supabase.from('system_config').select('*').single();
-    if (configData) {
-      setSupportInfoState(configData.supportInfo || "");
-      setMaintenanceMessageState(configData.maintenanceMessage || "");
-      setIsLoggingEnabledState(configData.isLoggingEnabled ?? true);
-      setIsSystemLockedState(configData.isSystemLocked ?? false);
-    }
   }, [logout]);
 
   useEffect(() => {

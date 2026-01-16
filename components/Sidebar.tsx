@@ -5,23 +5,20 @@ import { useAuth } from '../App';
 export const AvatarIcon = ({ type, className = "w-full h-full" }: { type: string; className?: string }) => {
   if (type === 'female_shadow') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        {/* Cabelo Estilo Chanel/Bob (Silhueta que diferencia o gênero) */}
-        <path d="M12 2.5c-4.2 0-7.5 3.3-7.5 7.5v5c0 .6.4 1 1 1h1.5v-6c0-2.8 2.2-5 5-5s5 2.2 5 5v6H18.5c.6 0 1-.4 1-1v-5c0-4.2-3.3-7.5-7.5-7.5z" />
-        {/* Rosto (Círculo da Cabeça) */}
-        <circle cx="12" cy="9" r="4" />
-        {/* Tronco/Ombros */}
-        <path d="M12 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+      <svg viewBox="0 0 128 128" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="64" cy="64" r="64" fill="#F1F5F9"/>
+        <path d="M64 28C52.9543 28 44 36.9543 44 48C44 59.0457 52.9543 68 64 68C75.0457 68 84 59.0457 84 48C84 36.9543 75.0457 28 64 28Z" fill="#94A3B8"/>
+        <path d="M28 102C28 85.4315 41.4315 72 58 72H70C86.5685 72 100 85.4315 100 102V108H28V102Z" fill="#94A3B8"/>
+        <path d="M44 48C44 35 52 30 64 30C76 30 84 35 84 48C84 55 78 58 64 58C50 58 44 55 44 48Z" fill="#64748B" opacity="0.3"/>
       </svg>
     );
   }
   // Default Male Shadow
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      {/* Cabeça Masculina (Simples) */}
-      <circle cx="12" cy="8.5" r="4" />
-      {/* Tronco/Ombros */}
-      <path d="M12 14.5c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    <svg viewBox="0 0 128 128" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="64" cy="64" r="64" fill="#F1F5F9"/>
+      <path d="M64 32C55.1634 32 48 39.1634 48 48C48 56.8366 55.1634 64 64 64C72.8366 64 80 56.8366 80 48C80 39.1634 72.8366 32 64 32Z" fill="#94A3B8"/>
+      <path d="M32 104C32 86.3269 46.3269 72 64 72C81.6731 72 96 86.3269 96 104V108H32V104Z" fill="#94A3B8"/>
     </svg>
   );
 };
@@ -44,7 +41,7 @@ const Sidebar: React.FC = () => {
   const menuItems = user?.role === 'admin' ? [
     { id: 'dashboard', label: 'Monitoração', icon: 'fas fa-shield-alt' },
     { id: 'usuarios', label: 'Usuários', icon: 'fas fa-users' },
-    { id: 'logs', label: 'Logs do Sistema', icon: 'fas fa-history' },
+    { id: 'logs', label: 'Logs do System', icon: 'fas fa-history' },
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
     { id: 'suporte', label: 'Suporte', icon: 'fas fa-headset' },
   ] : [
@@ -61,12 +58,6 @@ const Sidebar: React.FC = () => {
     setIsSidebarOpen(false);
   };
 
-  const formatSuspensionDate = (dateStr?: string) => {
-    if (!dateStr) return null;
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
-  };
-
   return (
     <>
       {isSidebarOpen && (
@@ -79,55 +70,28 @@ const Sidebar: React.FC = () => {
       <aside className={`fixed top-0 left-0 bottom-0 w-64 bg-slate-950 text-slate-300 flex flex-col h-screen shadow-2xl z-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center justify-between border-b border-slate-900/50">
           <div className="flex items-center gap-3">
-            <div className="bg-violet-600 p-2 rounded-xl text-white shadow-lg shadow-violet-500/20">
+            <div className="bg-violet-600 p-2 rounded-xl text-white">
               <LogoInfinity className="w-6 h-6" />
             </div>
-            <span className="text-lg font-black text-white tracking-tighter italic whitespace-nowrap">Personalle Infinity</span>
+            <span className="text-lg font-black text-white italic whitespace-nowrap">Personalle Infinity</span>
           </div>
-          <button 
-            onClick={() => setIsSidebarOpen(false)}
-            className="text-slate-500 hover:text-white transition-colors"
-          >
+          <button onClick={() => setIsSidebarOpen(false)} className="text-slate-500 hover:text-white">
             <i className="fas fa-times text-xl"></i>
           </button>
         </div>
 
         <div className="p-6 flex flex-col items-center gap-2">
           <div className="relative group">
-            <div className="w-20 h-20 rounded-[2.5rem] border-2 border-slate-800 bg-slate-900/50 flex items-center justify-center text-3xl text-slate-400 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
-              <AvatarIcon type={user?.avatar || 'male_shadow'} className="w-12 h-12 opacity-70" />
+            <div className="w-20 h-20 rounded-[2.5rem] border-2 border-slate-800 bg-slate-900 flex items-center justify-center overflow-hidden">
+              <AvatarIcon type={user?.avatar || 'male_shadow'} className="w-full h-full" />
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-slate-950 rounded-full flex items-center justify-center ${isOnline ? 'bg-violet-600' : 'bg-rose-500'}`}>
-               <div className={`w-1.5 h-1.5 bg-white rounded-full ${isOnline ? 'animate-pulse' : ''}`}></div>
-            </div>
+            <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-slate-950 rounded-full ${isOnline ? 'bg-violet-600' : 'bg-rose-500'}`}></div>
           </div>
-          <div className="text-center mt-2 flex flex-col items-center w-full px-2">
-            <p className="text-white font-black leading-tight truncate w-full tracking-tight">{user?.name}</p>
-            <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black mt-1 mb-2">
-              {user?.role === 'admin' ? 'System Controller' : 'PLATINUM'}
+          <div className="text-center mt-2">
+            <p className="text-white font-black truncate max-w-[180px]">{user?.name}</p>
+            <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black">
+              {user?.role === 'admin' ? 'Controller' : 'PLATINUM'}
             </p>
-            
-            {!isOnline && (
-              <div className="mb-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/30">
-                <i className="fas fa-wifi-slash text-[10px] text-rose-400"></i>
-                <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Offline</span>
-              </div>
-            )}
-            
-            {user?.role !== 'admin' && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/40 border border-slate-800/50 shadow-inner">
-                {user?.suspensionDate ? (
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">
-                    Vencimento: {formatSuspensionDate(user.suspensionDate)}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Vitalício</span>
-                    <i className="fas fa-crown text-[10px] text-amber-400"></i>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -136,13 +100,13 @@ const Sidebar: React.FC = () => {
             <button
               key={item.id}
               onClick={() => handleNavigate(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 ${
                 activeView === item.id 
-                ? 'bg-violet-600 text-white shadow-xl shadow-violet-600/30' 
+                ? 'bg-violet-600 text-white shadow-lg' 
                 : 'hover:bg-slate-900 text-slate-400 hover:text-white'
               }`}
             >
-              <i className={`${item.icon} w-5 text-center ${activeView === item.id ? 'text-white' : 'text-slate-600 group-hover:text-violet-400'}`}></i>
+              <i className={`${item.icon} w-5 text-center`}></i>
               <span className="font-bold text-xs uppercase tracking-widest">{item.label}</span>
             </button>
           ))}
@@ -151,10 +115,10 @@ const Sidebar: React.FC = () => {
         <div className="p-4 border-t border-slate-900/50">
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all"
           >
             <i className="fas fa-power-off text-sm"></i>
-            <span className="font-black text-xs uppercase tracking-widest">Desconectar</span>
+            <span className="font-black text-xs uppercase tracking-widest">Sair</span>
           </button>
         </div>
       </aside>

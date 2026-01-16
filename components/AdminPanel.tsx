@@ -5,7 +5,7 @@ import { useAuth } from '../App';
 import { AvatarIcon } from './Sidebar';
 
 const AdminPanel: React.FC = () => {
-  const { allUsers, setAllUsers, deleteUserFromDb, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet, saveCategoriesBatch, saveBankAccountsBatch } = useAuth();
+  const { allUsers, setAllUsers, deleteUserFromDb, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet, saveCategoriesBatch, saveBankAccountsBatch, setIsSystemLocked } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +14,7 @@ const AdminPanel: React.FC = () => {
   const [showAdminRoleConfirm, setShowAdminRoleConfirm] = useState(false);
   const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
   const [showDuplicateError, setShowDuplicateError] = useState(false);
+  const [showKickAllConfirm, setShowKickAllConfirm] = useState(false);
   const [showGenericConfirm, setShowGenericConfirm] = useState<{
     show: boolean;
     type: 'reset' | 'status';
@@ -126,25 +127,19 @@ const AdminPanel: React.FC = () => {
       
       await setAllUsers([...allUsers, newUser]);
 
-      // Criação de Categorias Padrão
+      // Categorias Padrão para novo usuário
       const defaultCategories: any[] = [
         { id: crypto.randomUUID(), userId: newUid, name: 'Salário', type: 'income', icon: 'fa-money-bill-wave', color: '#10b981' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Serviços', type: 'income', icon: 'fa-handshake', color: '#3b82f6' },
         { id: crypto.randomUUID(), userId: newUid, name: 'Moradia', type: 'expense', icon: 'fa-house', color: '#ef4444' },
         { id: crypto.randomUUID(), userId: newUid, name: 'Alimentação', type: 'expense', icon: 'fa-utensils', color: '#f59e0b' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Transporte', type: 'expense', icon: 'fa-car', color: '#3b82f6' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Saúde e Bem-Estar', type: 'expense', icon: 'fa-heart-pulse', color: '#ec4899' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Educação', type: 'expense', icon: 'fa-graduation-cap', color: '#8b5cf6' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Lazer', type: 'expense', icon: 'fa-gamepad', color: '#d946ef' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Despesas Pessoais', type: 'expense', icon: 'fa-user-gear', color: '#64748b' }
+        { id: crypto.randomUUID(), userId: newUid, name: 'Transporte', type: 'expense', icon: 'fa-car', color: '#3b82f6' }
       ];
       await saveCategoriesBatch(defaultCategories);
 
-      // Criação de Contas Padrão
+      // Contas Padrão para novo usuário
       const defaultAccounts: BankAccount[] = [
-        { id: crypto.randomUUID(), userId: newUid, name: 'Conta Corrente', type: 'checking', bankName: 'Banco Padrão' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Dinheiro', type: 'cash', bankName: 'Carteira' },
-        { id: crypto.randomUUID(), userId: newUid, name: 'Cartão de Crédito', type: 'credit_card', bankName: 'Meu Cartão' }
+        { id: crypto.randomUUID(), userId: newUid, name: 'Carteira', type: 'cash', bankName: 'Dinheiro' },
+        { id: crypto.randomUUID(), userId: newUid, name: 'Conta Principal', type: 'checking', bankName: 'Banco' }
       ];
       await saveBankAccountsBatch(defaultAccounts);
 
@@ -189,6 +184,18 @@ const AdminPanel: React.FC = () => {
     closeModal();
   };
 
+  const handleKickAll = async () => {
+    if (!checkInternet() || !loggedAdmin) return;
+    if (adminPasswordConfirm !== loggedAdmin.password) {
+      setSecurityError('Senha administrativa incorreta.');
+      return;
+    }
+    await setIsSystemLocked(true);
+    addLog(loggedAdmin, 'edit_user', 'Acesso global bloqueado: Todos usuários Platinum desconectados.');
+    setShowKickAllConfirm(false);
+    setAdminPasswordConfirm('');
+  };
+
   const confirmResetPassword = async () => {
     if (!checkInternet()) return;
     const u = showGenericConfirm.user;
@@ -209,26 +216,43 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-600 shadow-sm transition-all"
-          >
-            <i className="fas fa-bars text-sm"></i>
-          </button>
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-800">Membros</h2>
-            <p className="text-xs md:text-sm text-slate-500">Gestão de Licenças Infinity</p>
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-600 shadow-sm transition-all"
+            >
+              <i className="fas fa-bars text-sm"></i>
+            </button>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800">Membros</h2>
+              <p className="text-xs md:text-sm text-slate-500">Gestão de Licenças Infinity</p>
+            </div>
           </div>
+          <button 
+            onClick={() => openModal()}
+            className="bg-violet-600 hover:bg-violet-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all font-medium text-sm"
+          >
+            <i className="fas fa-user-plus text-xs"></i>
+            Novo Membro
+          </button>
         </div>
-        <button 
-          onClick={() => openModal()}
-          className="bg-violet-600 hover:bg-violet-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl shadow-lg shadow-violet-100 flex items-center justify-center gap-2 transition-all font-medium text-sm"
-        >
-          <i className="fas fa-user-plus text-xs"></i>
-          Novo Membro
-        </button>
+
+        {/* Botão de Desconexão Global - Logo abaixo do título */}
+        <div className="pt-2">
+          <button 
+            onClick={() => {
+              setAdminPasswordConfirm('');
+              setSecurityError('');
+              setShowKickAllConfirm(true);
+            }}
+            className="group flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-[0.1em] shadow-sm active:scale-95"
+          >
+            <i className="fas fa-plug-circle-xmark text-xs group-hover:rotate-12 transition-transform"></i>
+            Desconectar Todos os Usuários Online
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 relative group">
@@ -264,8 +288,8 @@ const AdminPanel: React.FC = () => {
                   <tr key={u.uid} className="group hover:bg-slate-50 transition-colors">
                     <td className="px-3 md:px-6 py-3 md:py-5">
                       <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
-                        <div className="bg-slate-50 text-slate-300 w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-2xl flex-shrink-0 flex items-center justify-center text-sm md:text-xl overflow-hidden border border-slate-100">
-                          <AvatarIcon type={u.avatar || 'male_shadow'} className="w-6 h-6 md:w-8 md:h-8 opacity-40" />
+                        <div className="bg-slate-50 w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-100">
+                          <AvatarIcon type={u.avatar || 'male_shadow'} className="w-full h-full" />
                         </div>
                         <div className="truncate">
                           <p className="font-bold text-slate-800 text-xs md:text-base truncate">{u.name}</p>
@@ -318,7 +342,7 @@ const AdminPanel: React.FC = () => {
               <form onSubmit={handleSaveAttempt} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Nome Completo</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-tight">Nome Completo</label>
                     <input
                       type="text"
                       required
@@ -328,7 +352,7 @@ const AdminPanel: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Username</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-tight">Username</label>
                     <input
                       type="text"
                       required
@@ -339,7 +363,7 @@ const AdminPanel: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Perfil</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-tight">Perfil</label>
                     <select
                       value={formData.role}
                       onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
@@ -353,7 +377,7 @@ const AdminPanel: React.FC = () => {
 
                 <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-bold text-slate-600 uppercase">Validade da Licença</label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-tight">Validade da Licença</label>
                   </div>
                   <div className="flex gap-2">
                     <button 
@@ -389,7 +413,7 @@ const AdminPanel: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <button type="submit" className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold shadow-lg shadow-violet-100 transition-all">
+                  <button type="submit" className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold shadow-lg transition-all">
                     {editingUser ? 'Salvar Configurações' : 'Cadastrar Membro'}
                   </button>
                 </div>
@@ -426,7 +450,7 @@ const AdminPanel: React.FC = () => {
                       disabled={editingUser.username === 'root'}
                       className="col-span-2 p-3 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold"
                     >
-                      Excluir
+                      Excluir Conta
                     </button>
                   </div>
                 </div>
@@ -435,7 +459,159 @@ const AdminPanel: React.FC = () => {
           </div>
         </div>
       )}
-      {/* ... (rest of modals) */}
+
+      {/* Modal Desconectar Todos */}
+      {showKickAllConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-amber-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl animate-pulse">
+              <i className="fas fa-plug-circle-xmark"></i>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Desconexão Forçada</h3>
+              <p className="text-sm text-slate-500">Isso ativará o modo de manutenção e desconectará imediatamente todos os usuários Platinum online.</p>
+            </div>
+            <div className="space-y-4">
+              <input 
+                type="password"
+                placeholder="Confirme sua senha admin"
+                value={adminPasswordConfirm}
+                onChange={(e) => setAdminPasswordConfirm(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 outline-none text-center font-bold"
+              />
+              {securityError && <p className="text-xs text-rose-600 font-bold">{securityError}</p>}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button onClick={handleKickAll} className="w-full py-4 bg-amber-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-amber-700 transition-all">Confirmar Expulsão</button>
+              <button onClick={() => setShowKickAllConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Outros modais (Reset, Status, Sucesso, Erro, AdminRole) permanecem inalterados mas garantindo o estilo sombra nos avatares */}
+      {showGenericConfirm.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className={`w-20 h-20 mx-auto rounded-[2rem] flex items-center justify-center text-3xl shadow-inner ${
+              showGenericConfirm.type === 'reset' ? 'bg-violet-50 text-violet-600' : (formData.isActive ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600')
+            }`}>
+              <i className={`fas ${showGenericConfirm.type === 'reset' ? 'fa-key' : (formData.isActive ? 'fa-user-slash' : 'fa-user-check')}`}></i>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">
+                {showGenericConfirm.type === 'reset' ? 'Confirmar Reset?' : (formData.isActive ? 'Suspender Usuário?' : 'Ativar Usuário?')}
+              </h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                {showGenericConfirm.type === 'reset' 
+                  ? 'A senha será redefinida para o username padrão.' 
+                  : `Deseja realmente ${formData.isActive ? 'suspender' : 'reativar'} o acesso deste membro?`}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={showGenericConfirm.type === 'reset' ? confirmResetPassword : confirmStatusToggle}
+                className={`w-full py-4 text-white font-bold rounded-2xl shadow-lg transition-all ${
+                  showGenericConfirm.type === 'reset' ? 'bg-violet-600 hover:bg-violet-700' : (formData.isActive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700')
+                }`}
+              >
+                Confirmar Ação
+              </button>
+              <button onClick={() => setShowGenericConfirm({ ...showGenericConfirm, show: false })} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Sucesso Reset */}
+      {showResetSuccessModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner animate-bounce-subtle">
+              <i className="fas fa-check-circle"></i>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Senha Resetada!</h3>
+              <p className="text-sm text-slate-500">O membro agora deve utilizar o username como senha para o próximo acesso.</p>
+            </div>
+            <button onClick={() => setShowResetSuccessModal(false)} className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl hover:bg-slate-800 transition-all">Entendido</button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão com Senha Admin */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-rose-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl">
+              <i className="fas fa-user-xmark"></i>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Remoção Irreversível</h3>
+              <p className="text-sm text-slate-500">Confirme sua senha administrativa para remover permanentemente este membro.</p>
+            </div>
+            <div className="space-y-4">
+              <input 
+                type="password"
+                placeholder="Sua senha admin"
+                value={adminPasswordConfirm}
+                onChange={(e) => setAdminPasswordConfirm(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 outline-none text-center font-bold"
+              />
+              {securityError && <p className="text-xs text-rose-600 font-bold">{securityError}</p>}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button onClick={handleFinalDelete} className="w-full py-4 bg-rose-600 text-white font-bold rounded-2xl shadow-lg hover:bg-rose-700 transition-all">Confirmar Exclusão</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Erro Duplicidade */}
+      {showDuplicateError && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-amber-50 text-amber-500 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner">
+              <i className="fas fa-id-badge"></i>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Conflito de Usuário</h3>
+              <p className="text-sm text-slate-500">Este username já está em uso por outro membro do Personalle Infinity.</p>
+            </div>
+            <button onClick={() => setShowDuplicateError(false)} className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl transition-all">Tentar Outro</button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Novo Admin */}
+      {showAdminRoleConfirm && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl animate-pulse">
+              <i className="fas fa-shield-alt"></i>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Elevar Privilégios?</h3>
+              <p className="text-sm text-slate-500">Você está promovendo este usuário a Administrador. Digite sua senha para confirmar.</p>
+            </div>
+            <div className="space-y-4">
+              <input 
+                type="password"
+                placeholder="Sua senha admin"
+                value={adminPasswordConfirm}
+                onChange={(e) => setAdminPasswordConfirm(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-center font-bold"
+              />
+              {securityError && <p className="text-xs text-rose-600 font-bold">{securityError}</p>}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button onClick={confirmAdminRoleSave} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-all">Confirmar Promoção</button>
+              <button onClick={() => setShowAdminRoleConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

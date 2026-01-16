@@ -16,11 +16,11 @@ const UserProfile: React.FC = () => {
   const AVATAR_OPTIONS = [
     { 
       id: 'male_shadow', 
-      label: 'Sombra Masculina', 
+      label: 'Sombra Masc.', 
     },
     { 
       id: 'female_shadow', 
-      label: 'Sombra Feminina', 
+      label: 'Sombra Fem.', 
     }
   ];
 
@@ -61,26 +61,21 @@ const UserProfile: React.FC = () => {
           <i className="fas fa-bars"></i>
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Perfil Premium</h2>
-          <p className="text-slate-500">Ajustes da conta Personalle Infinity</p>
+          <h2 className="text-2xl font-bold text-slate-800">Perfil</h2>
+          <p className="text-slate-500">Configurações da conta Infinity</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm text-center">
-            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-widest mb-6">Avatar do Perfil</h3>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Identidade Visual</h3>
             
             <div className="relative inline-block mb-8">
-              <div className="w-32 h-32 rounded-3xl border-4 border-slate-100 shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center text-slate-200">
-                <AvatarIcon type={avatar} className="w-20 h-20 opacity-60" />
-              </div>
-              <div className="absolute -bottom-2 -right-2 bg-violet-500 text-white w-8 h-8 rounded-xl flex items-center justify-center shadow-lg">
-                <i className="fas fa-fingerprint text-sm"></i>
+              <div className="w-32 h-32 rounded-[2.5rem] border-4 border-slate-50 shadow-inner overflow-hidden bg-slate-100 flex items-center justify-center">
+                <AvatarIcon type={avatar} className="w-full h-full" />
               </div>
             </div>
-
-            <p className="text-xs text-slate-400 mb-4 font-medium italic">Selecione uma silhueta de identificação</p>
 
             <div className="flex justify-center gap-4">
               {AVATAR_OPTIONS.map((opt) => (
@@ -88,20 +83,21 @@ const UserProfile: React.FC = () => {
                   key={opt.id}
                   type="button"
                   onClick={() => setAvatar(opt.id)}
-                  className={`relative w-16 h-16 rounded-2xl flex items-center justify-center text-2xl border-2 transition-all hover:scale-105 active:scale-95 ${
-                    avatar === opt.id ? 'border-violet-500 bg-violet-50 text-violet-600 shadow-inner' : 'border-slate-100 bg-slate-50 text-slate-300'
+                  className={`relative w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all ${
+                    avatar === opt.id ? 'border-violet-500 bg-violet-50' : 'border-slate-100 bg-slate-50'
                   }`}
                   title={opt.label}
                 >
-                  <AvatarIcon type={opt.id} className="w-8 h-8 opacity-80" />
+                  <AvatarIcon type={opt.id} className="w-10 h-10" />
                   {avatar === opt.id && (
-                    <div className="absolute -top-1 -right-1 bg-violet-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]">
+                    <div className="absolute -top-1 -right-1 bg-violet-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[8px]">
                       <i className="fas fa-check"></i>
                     </div>
                   )}
                 </button>
               ))}
             </div>
+            <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Silhueta Infinity</p>
           </div>
         </div>
 
@@ -111,11 +107,11 @@ const UserProfile: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-4">
                   <i className="fas fa-id-card text-violet-500"></i>
-                  Identificação
+                  Dados Cadastrais
                 </h4>
                 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Nome de Exibição</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Nome Completo</label>
                   <input
                     type="text"
                     value={name}
@@ -126,7 +122,7 @@ const UserProfile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 opacity-50">Username (Fixo)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 opacity-50">Username (Inalterável)</label>
                   <input
                     type="text"
                     disabled
@@ -139,7 +135,7 @@ const UserProfile: React.FC = () => {
               <div className="space-y-4 pt-6">
                 <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-4">
                   <i className="fas fa-lock text-purple-500"></i>
-                  Alterar Senha
+                  Segurança da Conta
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -154,7 +150,7 @@ const UserProfile: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Repetir Senha</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Confirmar Senha</label>
                     <input
                       type="password"
                       value={confirmPassword}
@@ -168,7 +164,7 @@ const UserProfile: React.FC = () => {
 
               {message && (
                 <div className={`p-4 rounded-xl text-sm font-bold flex items-center gap-3 animate-in fade-in duration-300 ${
-                  message.type === 'success' ? 'bg-violet-50 text-violet-700 border border-violet-100' : 'bg-red-50 text-red-700 border border-red-100'
+                  message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
                 }`}>
                   <i className={`fas ${message.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
                   {message.text}
@@ -179,10 +175,10 @@ const UserProfile: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-2xl shadow-xl shadow-violet-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-4 bg-slate-950 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <i className="fas fa-save"></i>
-                  {isSaving ? 'Salvando...' : 'Salvar Preferências'}
+                  {isSaving ? 'Processando...' : 'Atualizar Perfil'}
                 </button>
               </div>
             </form>
