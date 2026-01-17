@@ -212,7 +212,12 @@ const AdminPanel: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl border border-slate-100 overflow-hidden bg-slate-50"><AvatarIcon type={u.avatar || 'male_shadow'} /></div>
                       <div>
-                        <p className="font-bold text-slate-800 text-sm">{u.name}</p>
+                        <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                          {u.name}
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500'}`}>
+                            {u.role === 'admin' ? 'ADM' : 'PLAT'}
+                          </span>
+                        </p>
                         <p className="text-[10px] text-slate-400 font-medium">@{u.username}</p>
                       </div>
                     </div>

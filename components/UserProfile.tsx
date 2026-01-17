@@ -12,6 +12,17 @@ const UserProfile: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+  const formatSuspensionDate = (dateString?: string) => {
+    if (!dateString) return 'Vitalício';
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('pt-BR').format(date);
+    } catch (e) {
+      console.error("Erro ao formatar data de suspensão:", e);
+      return 'Inválida';
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
@@ -105,6 +116,15 @@ const UserProfile: React.FC = () => {
                     value={user?.username || ''}
                     className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed font-mono"
                   />
+                </div>
+
+                <div className="pt-2">
+                  <p className="text-sm font-bold text-slate-700 mb-1">
+                    Vencimento:
+                    <span className={`ml-2 px-3 py-1 rounded-lg text-xs font-black uppercase ${user?.suspensionDate ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                      {formatSuspensionDate(user?.suspensionDate)}
+                    </span>
+                  </p>
                 </div>
               </div>
 

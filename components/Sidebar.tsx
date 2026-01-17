@@ -38,6 +38,16 @@ const LogoInfinity = ({ className = "w-6 h-6" }: { className?: string }) => (
 const Sidebar: React.FC = () => {
   const { user, logout, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, isOnline } = useAuth();
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('pt-BR').format(date);
+    } catch (e) {
+      return null;
+    }
+  };
+
   const menuItems = user?.role === 'admin' ? [
     { id: 'dashboard', label: 'Monitoração', icon: 'fas fa-shield-alt' },
     { id: 'usuarios', label: 'Usuários', icon: 'fas fa-users' },
@@ -92,6 +102,19 @@ const Sidebar: React.FC = () => {
             <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black">
               {user?.role === 'admin' ? 'Controller' : 'PLATINUM'}
             </p>
+            <div className="mt-1 flex items-center justify-center gap-1.5 opacity-80">
+              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">Vencimento:</span>
+              <span className={`text-[9px] font-black uppercase flex items-center gap-1 ${user?.suspensionDate ? 'text-rose-400' : 'text-amber-400'}`}>
+                {user?.suspensionDate ? (
+                  formatDate(user.suspensionDate)
+                ) : (
+                  <>
+                    Vitalício
+                    <i className="fas fa-crown text-[8px] animate-pulse"></i>
+                  </>
+                )}
+              </span>
+            </div>
           </div>
         </div>
 
