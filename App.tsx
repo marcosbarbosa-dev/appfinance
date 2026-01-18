@@ -175,7 +175,9 @@ const App: React.FC = () => {
 
   const fetchGlobalConfig = useCallback(async () => {
     try {
-      const { data: configData } = await supabase.from('system_config').select('*').single();
+      const { data: configData, error: configError } = await supabase.from('system_config').select('*').single();
+      if (configError) throw configError;
+
       if (configData) {
         setSupportInfoState(configData.supportInfo || "");
         setMaintenanceMessageState(configData.maintenanceMessage || "");
@@ -195,14 +197,25 @@ const App: React.FC = () => {
         }
       }
     } catch (e) {
-      console.error("Erro config:", e);
+      console.error("Erro config (ignorado para evitar logout precoce):", e);
     }
   }, [logout]);
 
   const fetchUserData = useCallback(async (loggedInUser: User) => {
     if (!userRef.current) return;
     try {
-      const { data: currentUserStatus } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
+      const { data: currentUserStatus, error: fetchError } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
+      
+      // Se houver um erro na requisição
+      if (fetchError) {
+        // Código PGRST116 significa que o registro não foi encontrado (usuário deletado)
+        // Somente deslogamos se tivermos certeza que o registro não existe mais
+        if (fetchError.code === 'PGRST116') {
+          logout();
+        }
+        return; // Em caso de erro de rede ou timeout, apenas ignoramos esta volta do polling
+      }
+
       if (currentUserStatus && userRef.current) {
         if (currentUserStatus.refreshId && lastRefreshId.current && currentUserStatus.refreshId !== lastRefreshId.current) {
           window.location.reload();
@@ -217,11 +230,9 @@ const App: React.FC = () => {
           return;
         }
         setUser(currentUserStatus);
-      } else if (!currentUserStatus && userRef.current) {
-        logout();
-        return;
       }
 
+      // Carregamento de dados adicionais
       if (loggedInUser.role === 'admin' && userRef.current) {
         const { data: usersData } = await supabase.from('users').select('*');
         if (usersData) setAllUsersState(usersData);
@@ -238,7 +249,7 @@ const App: React.FC = () => {
         if (accsData) setBankAccountsState(accsData);
       }
     } catch (e) {
-      console.error("Erro userData:", e);
+      console.error("Erro no polling de dados do usuário (ignorado):", e);
     }
   }, [logout]);
 
