@@ -10,7 +10,7 @@ const AdminDashboard: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
     
     const active = allUsers.filter(u => {
-      const isAutoSuspended = u.suspensionDate && today >= u.suspensionDate;
+      const isAutoSuspended = u.suspensionDate && today > u.suspensionDate;
       return u.isActive && !isAutoSuspended;
     }).length;
 

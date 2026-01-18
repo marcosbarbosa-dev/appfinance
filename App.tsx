@@ -211,7 +211,7 @@ const App: React.FC = () => {
         lastRefreshId.current = currentUserStatus.refreshId || null;
 
         const today = new Date().toISOString().split('T')[0];
-        const isSuspendedByDate = currentUserStatus.suspensionDate && today >= currentUserStatus.suspensionDate;
+        const isSuspendedByDate = currentUserStatus.suspensionDate && today > currentUserStatus.suspensionDate;
         if (!currentUserStatus.isActive || isSuspendedByDate) {
           logout("Sua conta foi suspensa.");
           return;
@@ -286,7 +286,7 @@ const App: React.FC = () => {
         return;
       }
       const today = new Date().toISOString().split('T')[0];
-      const isSuspendedByDate = data.suspensionDate && today >= data.suspensionDate;
+      const isSuspendedByDate = data.suspensionDate && today > data.suspensionDate;
       if (!data.isActive || isSuspendedByDate) {
         setError("Acesso suspenso. Contate o suporte.");
         setLoading(false);

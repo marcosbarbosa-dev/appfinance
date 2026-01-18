@@ -102,19 +102,21 @@ const Sidebar: React.FC = () => {
             <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black">
               {user?.role === 'admin' ? 'Controller' : 'PLATINUM'}
             </p>
-            <div className="mt-1 flex items-center justify-center gap-1.5 opacity-80">
-              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">Vencimento:</span>
-              <span className={`text-[9px] font-black uppercase flex items-center gap-1 ${user?.suspensionDate ? 'text-rose-400' : 'text-amber-400'}`}>
-                {user?.suspensionDate ? (
-                  formatDate(user.suspensionDate)
-                ) : (
-                  <>
-                    Vitalício
-                    <i className="fas fa-crown text-[8px] animate-pulse"></i>
-                  </>
-                )}
-              </span>
-            </div>
+            {user?.role !== 'admin' && (
+              <div className="mt-1 flex items-center justify-center gap-1.5 opacity-80">
+                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">Vencimento:</span>
+                <span className={`text-[9px] font-black uppercase flex items-center gap-1 ${user?.suspensionDate ? 'text-rose-400' : 'text-amber-400'}`}>
+                  {user?.suspensionDate ? (
+                    formatDate(user.suspensionDate)
+                  ) : (
+                    <>
+                      Vitalício
+                      <i className="fas fa-crown text-[8px] animate-pulse"></i>
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

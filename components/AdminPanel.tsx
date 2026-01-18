@@ -34,6 +34,8 @@ const AdminPanel: React.FC = () => {
 
   const [accessType, setAccessType] = useState<'permanent' | 'temporary'>('permanent');
 
+  const today = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     if (formData.role === 'admin') {
       setAccessType('permanent');
@@ -216,30 +218,56 @@ const AdminPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((u) => (
-                <tr key={u.uid} className="hover:bg-slate-50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl border border-slate-100 overflow-hidden bg-slate-50"><AvatarIcon type={u.avatar || 'male_shadow'} /></div>
-                      <div>
-                        <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                          {u.name}
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500'}`}>
-                            {u.role === 'admin' ? 'ADM' : 'PLAT'}
-                          </span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-medium">@{u.username}</p>
+              {filteredUsers.map((u) => {
+                const isExpired = u.suspensionDate && today > u.suspensionDate;
+                
+                // Lógica de "A VENCER" (até 10 dias)
+                let isAboutToExpire = false;
+                if (u.suspensionDate && !isExpired && u.isActive) {
+                  const dSuspension = new Date(u.suspensionDate + 'T12:00:00');
+                  const dToday = new Date(today + 'T12:00:00');
+                  const diffDays = Math.round((dSuspension.getTime() - dToday.getTime()) / (1000 * 60 * 60 * 24));
+                  isAboutToExpire = diffDays >= 0 && diffDays <= 10;
+                }
+
+                return (
+                  <tr key={u.uid} className="hover:bg-slate-50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl border border-slate-100 overflow-hidden bg-slate-50"><AvatarIcon type={u.avatar || 'male_shadow'} /></div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            {u.name}
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500'}`}>
+                              {u.role === 'admin' ? 'ADM' : 'PLAT'}
+                            </span>
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium">@{u.username}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${u.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{u.isActive ? 'ATIVO' : 'SUSPENSO'}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={() => openModal(u)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 text-slate-400 hover:text-violet-600 rounded-lg shadow-sm transition-all"><i className="fas fa-ellipsis-h"></i></button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${
+                          isExpired ? 'bg-rose-50 text-rose-600' : 
+                          isAboutToExpire ? 'bg-amber-50 text-amber-600' : 
+                          (u.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')
+                        }`}>
+                          {isExpired ? 'VENCIDO' : isAboutToExpire ? 'A VENCER' : (u.isActive ? 'ATIVO' : 'SUSPENSO')}
+                        </span>
+                        {isAboutToExpire && u.suspensionDate && (
+                          <span className="text-[9px] text-slate-400 font-bold leading-none">
+                            {u.suspensionDate.split('-').reverse().join('/')}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => openModal(u)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 text-slate-400 hover:text-violet-600 rounded-lg shadow-sm transition-all"><i className="fas fa-ellipsis-h"></i></button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -282,16 +310,19 @@ const AdminPanel: React.FC = () => {
                       <option value="admin">Administrador</option>
                     </select>
                   </div>
-                  <div>
-                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Validade</label>
-                     <div className="flex gap-1 p-1 bg-slate-50 rounded-lg border">
-                        <button type="button" onClick={() => setAccessType('permanent')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-md transition-all ${accessType === 'permanent' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-400'}`}>Permanente</button>
-                        <button type="button" onClick={() => setAccessType('temporary')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-md transition-all ${accessType === 'temporary' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-400'}`}>Data</button>
-                     </div>
-                  </div>
+                  
+                  {formData.role !== 'admin' && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Validade</label>
+                       <div className="flex gap-1 p-1 bg-slate-50 rounded-lg border">
+                          <button type="button" onClick={() => setAccessType('permanent')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-md transition-all ${accessType === 'permanent' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-400'}`}>Permanente</button>
+                          <button type="button" onClick={() => setAccessType('temporary')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-md transition-all ${accessType === 'temporary' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-400'}`}>Data</button>
+                       </div>
+                    </div>
+                  )}
                 </div>
 
-                {accessType === 'temporary' && (
+                {formData.role !== 'admin' && accessType === 'temporary' && (
                   <div className="animate-in slide-in-from-top-2">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Expiração do Acesso</label>
                     <input type="date" required value={formData.suspensionDate} onChange={(e) => setFormData({...formData, suspensionDate: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold"/>
