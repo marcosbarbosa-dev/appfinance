@@ -3,20 +3,37 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Personalle Infinity</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
+        /* 
+           ESTRATÉGIA ANTI PULL-TO-REFRESH 
+           Travamos o scroll no nível do navegador (html/body)
+           e permitimos apenas dentro do container da aplicação (#root).
+        */
         html, body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
-            /* Desativa o pull-to-refresh e o efeito de elástico no scroll */
-            overscroll-behavior-y: none;
+            margin: 0;
+            padding: 0;
             height: 100%;
+            width: 100%;
+            overflow: hidden; /* Trava o scroll do navegador */
+            position: fixed; /* Impede o bounce do iOS no nível do body */
+            overscroll-behavior-y: none;
+        }
+
+        #root {
+            height: 100%;
+            width: 100%;
+            overflow-y: auto; /* A rolagem acontece aqui agora */
             overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; /* Garante scroll suave no iOS */
+            overscroll-behavior-y: none; /* Desativa pull-to-refresh no Chrome/Android */
         }
 
         .custom-scrollbar::-webkit-scrollbar {
