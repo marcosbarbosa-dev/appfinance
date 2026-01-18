@@ -135,10 +135,20 @@ const AdminPanel: React.FC = () => {
     if (!checkInternet()) return;
     if (formData.role === 'admin' && (!editingUser || editingUser.role !== 'admin')) {
       setAdminPasswordConfirm('');
+      setSecurityError('');
       setShowAdminRoleConfirm(true);
     } else {
       executeSave();
     }
+  };
+
+  const handleConfirmAdminRole = () => {
+    if (!loggedAdmin) return;
+    if (adminPasswordConfirm !== loggedAdmin.password) {
+      setSecurityError('Senha administrativa incorreta.');
+      return;
+    }
+    executeSave();
   };
 
   const handleFinalDelete = async () => {
@@ -307,6 +317,24 @@ const AdminPanel: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAdminRoleConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-violet-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl"><i className="fas fa-user-shield"></i></div>
+            <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Conceder Acesso Admin</h3>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed">Você está prestes a tornar este usuário um administrador. Digite sua senha para confirmar.</p>
+            <div className="space-y-4">
+              <input type="password" placeholder="Sua senha Admin" value={adminPasswordConfirm} onChange={(e) => setAdminPasswordConfirm(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold outline-none focus:ring-2 focus:ring-violet-500"/>
+              {securityError && <p className="text-[10px] text-rose-600 font-black uppercase">{securityError}</p>}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button onClick={handleConfirmAdminRole} className="w-full py-4 bg-violet-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-violet-700 transition-all">Confirmar Cargo</button>
+              <button onClick={() => setShowAdminRoleConfirm(false)} className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancelar</button>
             </div>
           </div>
         </div>
