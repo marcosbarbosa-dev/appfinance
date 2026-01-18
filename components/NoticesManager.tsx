@@ -45,11 +45,13 @@ const NoticesManager: React.FC = () => {
 
     try {
       await saveNotice(notice);
-      // LIMPEZA OBRIGATÓRIA DO FORMULÁRIO
+      
+      // REQUISITO: Limpar o formulário após criar novo aviso
       setFormData({ title: '', message: '' });
+      
       setSuccessMessage({ title: 'Publicado!', msg: 'O comunicado já está visível para os membros.' });
-    } catch (error) {
-      console.error("Erro ao publicar:", error);
+    } catch (error: any) {
+      console.error("Erro ao publicar comunicado:", error?.message || error);
     } finally {
       setIsSaving(false);
     }

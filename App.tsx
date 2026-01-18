@@ -192,8 +192,12 @@ const App: React.FC = () => {
 
   const fetchGlobalConfig = useCallback(async () => {
     try {
-      const { data: configData, error: configError } = await supabase.from('system_config').select('*').single();
-      if (configError) throw configError;
+      const { data: configData, error: configError } = await supabase.from('system_config').select('*').maybeSingle();
+      
+      if (configError) {
+        console.error("Erro ao buscar configuração global:", configError.message);
+        return;
+      }
 
       if (configData) {
         setSupportInfoState(configData.supportInfo || "");
@@ -213,18 +217,23 @@ const App: React.FC = () => {
           return;
         }
       }
-    } catch (e) {
-      console.error("Erro config:", e);
+    } catch (e: any) {
+      console.error("Erro inesperado na configuração:", e?.message || e);
     }
   }, [logout]);
 
   const fetchUserData = useCallback(async (loggedInUser: User) => {
     if (!userRef.current) return;
     try {
-      const { data: currentUserStatus, error: fetchError } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
+      const { data: currentUserStatus, error: fetchError } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).maybeSingle();
       
       if (fetchError) {
-        if (fetchError.code === 'PGRST116') logout();
+        console.error("Erro ao validar usuário:", fetchError.message);
+        return;
+      }
+
+      if (!currentUserStatus && userRef.current) {
+        logout();
         return;
       }
 
@@ -263,8 +272,8 @@ const App: React.FC = () => {
         const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
         if (accsData) setBankAccountsState(accsData);
       }
-    } catch (e) {
-      console.error("Erro polling:", e);
+    } catch (e: any) {
+      console.error("Erro ao sincronizar dados do usuário:", e?.message || e);
     }
   }, [logout]);
 
@@ -305,7 +314,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: loginError } = await supabase.from('users').select('*').eq('username', username).eq('password', pass).single();
+      const { data, error: loginError } = await supabase.from('users').select('*').eq('username', username).eq('password', pass).maybeSingle();
       if (loginError || !data) {
         setError("Usuário ou senha incorretos.");
         setLoading(false);
@@ -436,19 +445,15 @@ const App: React.FC = () => {
 
   const deleteNotice = useCallback(async (id: string): Promise<boolean> => {
     try {
-      // Manual Cleanup: Remover confirmações de leitura antes do aviso
-      const { error: ackError } = await supabase.from('notice_acknowledgments').delete().eq('noticeId', id);
-      if (ackError) {
-        console.warn("Aviso: Falha parcial ao limpar confirmações de leitura.", ackError);
-      }
-      
+      // Cleanup: Remover vínculos antes de apagar o aviso
+      await supabase.from('notice_acknowledgments').delete().eq('noticeId', id);
       const { error: dbError } = await supabase.from('notices').delete().eq('id', id);
       if (dbError) throw dbError;
       
       setNoticesState(prev => prev.filter(n => n.id !== id));
       return true;
-    } catch (e) {
-      console.error("Erro crítico ao deletar aviso no Supabase:", e);
+    } catch (e: any) {
+      console.error("Erro crítico ao deletar aviso:", e?.message || e);
       return false;
     }
   }, []);
