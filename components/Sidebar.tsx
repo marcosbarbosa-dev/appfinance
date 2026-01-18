@@ -54,6 +54,7 @@ const Sidebar: React.FC = () => {
     { id: 'logs', label: 'Logs do System', icon: 'fas fa-history' },
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
     { id: 'suporte', label: 'Suporte', icon: 'fas fa-headset' },
+    { id: 'avisos', label: 'Avisos', icon: 'fas fa-bullhorn' },
   ] : [
     { id: 'inicio', label: 'Início', icon: 'fas fa-home' },
     { id: 'relatorio', label: 'Relatório', icon: 'fas fa-file-invoice-dollar' },
@@ -96,7 +97,7 @@ const Sidebar: React.FC = () => {
             <div className="w-20 h-20 rounded-[2.5rem] border-2 border-slate-800 bg-slate-900 flex items-center justify-center overflow-hidden">
               <AvatarIcon type={user?.avatar || 'male_shadow'} className="w-full h-full" />
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-slate-950 rounded-full ${isOnline ? 'bg-violet-600' : 'bg-rose-500'}`}></div>
+            <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-slate-950 rounded-full ${isOnline ? 'bg-violet-600' : 'bg-rose-50  '}`}></div>
           </div>
           <div className="text-center mt-2">
             <p className="text-white font-black truncate max-w-[180px]">{user?.name}</p>

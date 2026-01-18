@@ -1,6 +1,6 @@
 
 import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
-import { User, Category, Transaction, BankAccount, SystemLog, LogAction } from './types';
+import { User, Category, Transaction, BankAccount, SystemLog, LogAction, Notice } from './types';
 import { supabase } from './supabase';
 import LoginForm from './components/LoginForm';
 import UserHome from './components/UserHome';
@@ -13,6 +13,8 @@ import CategoriesManager from './components/CategoriesManager';
 import TransactionsList from './components/TransactionsList';
 import AccountsManager from './components/AccountsManager';
 import TransfersManager from './components/TransfersManager';
+import NoticesManager from './components/NoticesManager';
+import UserNoticeOverlay from './components/UserNoticeOverlay';
 import ReportsView from './components/ReportsView';
 import LogsPanel from './components/LogsPanel';
 import UserProfile from './components/UserProfile';
@@ -39,6 +41,11 @@ interface AuthContextType {
   deleteBankAccount: (id: string) => Promise<void>;
   logs: SystemLog[];
   setLogs: (logs: SystemLog[]) => Promise<void>;
+  notices: Notice[];
+  saveNotice: (notice: Notice) => Promise<void>;
+  deleteNotice: (id: string) => Promise<boolean>;
+  acknowledgeNotice: (noticeId: string) => Promise<void>;
+  acknowledgedNoticeIds: string[];
   supportInfo: string;
   setSupportInfo: (info: string) => Promise<void>;
   maintenanceMessage: string;
@@ -118,6 +125,8 @@ const App: React.FC = () => {
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
   const [bankAccounts, setBankAccountsState] = useState<BankAccount[]>([]);
   const [logs, setLogsState] = useState<SystemLog[]>([]);
+  const [notices, setNoticesState] = useState<Notice[]>([]);
+  const [acknowledgedNoticeIds, setAcknowledgedNoticeIds] = useState<string[]>([]);
   const [supportInfo, setSupportInfoState] = useState("");
   const [maintenanceMessage, setMaintenanceMessageState] = useState("");
   const [isLoggingEnabled, setIsLoggingEnabledState] = useState(true);
@@ -164,6 +173,13 @@ const App: React.FC = () => {
     localStorage.removeItem('personalle_user');
     userRef.current = null;
     setUser(null);
+    
+    setCategoriesState([]);
+    setTransactionsState([]);
+    setBankAccountsState([]);
+    setAcknowledgedNoticeIds([]);
+    setNoticesState([]);
+    
     if (msg && typeof msg === 'string') setLogoutMessage(msg);
     else setLogoutMessage("");
     setIsLoggingOut(true);
@@ -198,7 +214,7 @@ const App: React.FC = () => {
         }
       }
     } catch (e) {
-      console.error("Erro config (ignorado para evitar logout precoce):", e);
+      console.error("Erro config:", e);
     }
   }, [logout]);
 
@@ -207,14 +223,9 @@ const App: React.FC = () => {
     try {
       const { data: currentUserStatus, error: fetchError } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).single();
       
-      // Se houver um erro na requisição
       if (fetchError) {
-        // Código PGRST116 significa que o registro não foi encontrado (usuário deletado)
-        // Somente deslogamos se tivermos certeza que o registro não existe mais
-        if (fetchError.code === 'PGRST116') {
-          logout();
-        }
-        return; // Em caso de erro de rede ou timeout, apenas ignoramos esta volta do polling
+        if (fetchError.code === 'PGRST116') logout();
+        return;
       }
 
       if (currentUserStatus && userRef.current) {
@@ -223,17 +234,20 @@ const App: React.FC = () => {
           return;
         }
         lastRefreshId.current = currentUserStatus.refreshId || null;
-
         const today = new Date().toISOString().split('T')[0];
-        const isSuspendedByDate = currentUserStatus.suspensionDate && today > currentUserStatus.suspensionDate;
-        if (!currentUserStatus.isActive || isSuspendedByDate) {
+        if (!currentUserStatus.isActive || (currentUserStatus.suspensionDate && today > currentUserStatus.suspensionDate)) {
           logout("Sua conta foi suspensa.");
           return;
         }
         setUser(currentUserStatus);
       }
 
-      // Carregamento de dados adicionais
+      const { data: noticesData } = await supabase.from('notices').select('*').order('createdAt', { ascending: false });
+      if (noticesData) setNoticesState(noticesData);
+
+      const { data: ackData } = await supabase.from('notice_acknowledgments').select('noticeId').eq('userId', loggedInUser.uid);
+      if (ackData) setAcknowledgedNoticeIds(ackData.map(a => a.noticeId));
+
       if (loggedInUser.role === 'admin' && userRef.current) {
         const { data: usersData } = await supabase.from('users').select('*');
         if (usersData) setAllUsersState(usersData);
@@ -250,7 +264,7 @@ const App: React.FC = () => {
         if (accsData) setBankAccountsState(accsData);
       }
     } catch (e) {
-      console.error("Erro no polling de dados do usuário (ignorado):", e);
+      console.error("Erro polling:", e);
     }
   }, [logout]);
 
@@ -298,14 +312,13 @@ const App: React.FC = () => {
         return;
       }
       const today = new Date().toISOString().split('T')[0];
-      const isSuspendedByDate = data.suspensionDate && today > data.suspensionDate;
-      if (!data.isActive || isSuspendedByDate) {
-        setError("Acesso suspenso. Contate o suporte.");
+      if (!data.isActive || (data.suspensionDate && today > data.suspensionDate)) {
+        setError("Acesso suspenso.");
         setLoading(false);
         return;
       }
       if (isSystemLocked && data.role !== 'admin') {
-        setError(maintenanceMessage || "Sistema em manutenção.");
+        setError(maintenanceMessage || "Manutenção.");
         setLoading(false);
         return;
       }
@@ -412,6 +425,40 @@ const App: React.FC = () => {
     setBankAccountsState(prev => prev.filter(a => a.id !== id));
   };
 
+  const saveNotice = useCallback(async (notice: Notice) => {
+    await supabase.from('notices').upsert(notice);
+    setNoticesState(prev => {
+      const exists = prev.find(n => n.id === notice.id);
+      if (exists) return prev.map(n => n.id === notice.id ? notice : n);
+      return [notice, ...prev];
+    });
+  }, []);
+
+  const deleteNotice = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      // Manual Cleanup: Remover confirmações de leitura antes do aviso
+      const { error: ackError } = await supabase.from('notice_acknowledgments').delete().eq('noticeId', id);
+      if (ackError) {
+        console.warn("Aviso: Falha parcial ao limpar confirmações de leitura.", ackError);
+      }
+      
+      const { error: dbError } = await supabase.from('notices').delete().eq('id', id);
+      if (dbError) throw dbError;
+      
+      setNoticesState(prev => prev.filter(n => n.id !== id));
+      return true;
+    } catch (e) {
+      console.error("Erro crítico ao deletar aviso no Supabase:", e);
+      return false;
+    }
+  }, []);
+
+  const acknowledgeNotice = useCallback(async (noticeId: string) => {
+    if (!user) return;
+    await supabase.from('notice_acknowledgments').insert({ userId: user.uid, noticeId });
+    setAcknowledgedNoticeIds(prev => [...prev, noticeId]);
+  }, [user]);
+
   const setLogs = async (newLogs: SystemLog[]) => setLogsState(newLogs);
   const deleteLog = async (id: string) => {
     await supabase.from('logs').delete().eq('id', id);
@@ -453,6 +500,7 @@ const App: React.FC = () => {
       case 'categorias': return <CategoriesManager />;
       case 'lancamentos': return <TransactionsList />;
       case 'transferencias': return <TransfersManager />;
+      case 'avisos': return <NoticesManager />;
       case 'adicionar_transacao': return <AddTransaction />;
       case 'meus_dados': return <UserProfile />;
       case 'logs': return <LogsPanel />;
@@ -469,7 +517,8 @@ const App: React.FC = () => {
       categories, saveCategory, saveCategoriesBatch, deleteCategory,
       transactions, saveTransaction, saveTransactions, deleteTransactionFromDb,
       bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
-      logs, setLogs, supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
+      logs, setLogs, notices, saveNotice, deleteNotice, acknowledgeNotice, acknowledgedNoticeIds,
+      supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
       isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
       triggerGlobalRefresh,
       addLog, deleteLog, clearLogs, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
@@ -490,6 +539,7 @@ const App: React.FC = () => {
           <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64 opacity-50 pointer-events-none md:opacity-100 md:pointer-events-auto' : ''}`}>
             {renderActiveView()}
           </main>
+          <UserNoticeOverlay />
           <ConnectivityModal show={showOfflineAlert} onClose={() => setShowOfflineAlert(false)} />
         </div>
       )}

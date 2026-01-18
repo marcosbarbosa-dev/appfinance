@@ -12,7 +12,7 @@ export interface User {
   avatar?: string;
   suspensionDate?: string;
   updatedAt?: string;
-  refreshId?: string; // Novo: ID para forçar refresh do navegador
+  refreshId?: string;
 }
 
 export type TransactionType = 'income' | 'expense' | 'credit_card' | 'transfer';
@@ -56,4 +56,12 @@ export interface SystemLog {
   action: LogAction;
   timestamp: string;
   details?: string;
+}
+
+export interface Notice {
+  id: string;
+  title: string;
+  message: string;
+  isActive: boolean;
+  createdAt: string;
 }
