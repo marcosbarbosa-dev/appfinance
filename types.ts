@@ -15,7 +15,7 @@ export interface User {
   refreshId?: string; // Novo: ID para forçar refresh do navegador
 }
 
-export type TransactionType = 'income' | 'expense' | 'credit_card';
+export type TransactionType = 'income' | 'expense' | 'credit_card' | 'transfer';
 
 export interface Transaction {
   id: string;

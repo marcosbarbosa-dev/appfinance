@@ -101,12 +101,14 @@ const UserHome: React.FC = () => {
   }, [myTransactions, currentMonth, currentYear]);
 
   const stats = useMemo(() => {
+    // IMPORTANTE: Filtrar 'transfer' para não impactar KPIs de Ganho/Gasto
     const income = monthlyTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
     const expense = monthlyTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
     const credit = monthlyTransactions.filter(t => t.type === 'credit_card').reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
     
     const cashAccountsIds = bankAccounts.filter(a => a.type === 'cash').map(a => a.id);
-    const cashBalance = monthlyTransactions.filter(t => cashAccountsIds.includes(t.accountId)).reduce((acc, curr) => acc + curr.amount, 0);
+    // Dinheiro mensal ignora transferências para não inflar a percepção de fluxo
+    const cashBalance = monthlyTransactions.filter(t => t.type !== 'transfer' && cashAccountsIds.includes(t.accountId)).reduce((acc, curr) => acc + curr.amount, 0);
     
     const totalBalance = myTransactions.reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -128,7 +130,7 @@ const UserHome: React.FC = () => {
 
   const categoryGrouping = useMemo(() => {
     const grouping: Record<string, number> = {};
-    monthlyTransactions.filter(t => t.amount < 0).forEach(t => {
+    monthlyTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       grouping[t.category] = (grouping[t.category] || 0) + Math.abs(t.amount);
     });
     return Object.entries(grouping).map(([name, value]) => ({ name, value }));
@@ -139,7 +141,7 @@ const UserHome: React.FC = () => {
     const digitalTypes = ['checking', 'savings', 'investment'];
     
     monthlyTransactions
-      .filter(t => t.amount < 0)
+      .filter(t => t.type === 'expense') // Ignora transferências aqui também
       .forEach(t => {
         const acc = bankAccounts.find(a => a.id === t.accountId);
         if (acc && digitalTypes.includes(acc.type)) {
@@ -154,7 +156,7 @@ const UserHome: React.FC = () => {
     const cashAccountsIds = bankAccounts.filter(a => a.type === 'cash').map(a => a.id);
     
     monthlyTransactions
-      .filter(t => t.amount < 0 && cashAccountsIds.includes(t.accountId))
+      .filter(t => t.type === 'expense' && cashAccountsIds.includes(t.accountId))
       .forEach(t => {
         grouping[t.category] = (grouping[t.category] || 0) + Math.abs(t.amount);
       });
@@ -195,7 +197,6 @@ const UserHome: React.FC = () => {
           </div>
         </div>
         
-        {/* Navegação Temporal Compacta e Centralizada em Mobile/Tablet */}
         <div className="flex justify-center md:justify-end">
           <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-2xl border border-slate-100 shadow-inner">
             <div className="flex items-center bg-white rounded-xl shadow-sm px-2 py-1 gap-1">

@@ -12,6 +12,7 @@ import AddTransaction from './components/AddTransaction';
 import CategoriesManager from './components/CategoriesManager';
 import TransactionsList from './components/TransactionsList';
 import AccountsManager from './components/AccountsManager';
+import TransfersManager from './components/TransfersManager';
 import ReportsView from './components/ReportsView';
 import LogsPanel from './components/LogsPanel';
 import UserProfile from './components/UserProfile';
@@ -451,6 +452,7 @@ const App: React.FC = () => {
       case 'contas': return <AccountsManager />;
       case 'categorias': return <CategoriesManager />;
       case 'lancamentos': return <TransactionsList />;
+      case 'transferencias': return <TransfersManager />;
       case 'adicionar_transacao': return <AddTransaction />;
       case 'meus_dados': return <UserProfile />;
       case 'logs': return <LogsPanel />;

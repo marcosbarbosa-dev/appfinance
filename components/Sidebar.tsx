@@ -60,6 +60,7 @@ const Sidebar: React.FC = () => {
     { id: 'contas', label: 'Contas', icon: 'fas fa-university' },
     { id: 'categorias', label: 'Categorias', icon: 'fas fa-tags' },
     { id: 'lancamentos', label: 'Lançamentos', icon: 'fas fa-exchange-alt' },
+    { id: 'transferencias', label: 'Transferências', icon: 'fas fa-repeat' },
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
   ];
 

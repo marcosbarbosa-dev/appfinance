@@ -6,7 +6,7 @@ import AddTransaction from './AddTransaction';
 
 const TransactionsList: React.FC = () => {
   const { user, transactions, deleteTransactionFromDb, categories, bankAccounts, setIsSidebarOpen, checkInternet } = useAuth();
-  const [activeTab, setActiveTab] = useState<'income' | 'expense' | 'credit_card'>('expense');
+  const [activeTab, setActiveTab] = useState<'income' | 'expense' | 'credit_card' | 'transfer'>('expense');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -37,13 +37,14 @@ const TransactionsList: React.FC = () => {
         <div><h2 className="text-xl md:text-2xl font-bold text-slate-800">Lançamentos</h2><p className="text-slate-400 text-xs">Extrato Personalle Infinity</p></div>
       </div>
 
-      <div className="flex p-1 bg-slate-100 rounded-2xl gap-1 mb-6 w-full max-w-md mx-auto sm:mx-0">
+      <div className="flex p-1 bg-slate-100 rounded-2xl gap-1 mb-6 w-full max-w-md mx-auto sm:mx-0 overflow-x-auto custom-scrollbar">
         {[
           { id: 'income', label: 'Entradas', icon: 'fa-arrow-up', color: 'text-violet-600' },
           { id: 'expense', label: 'Saídas', icon: 'fa-arrow-down', color: 'text-rose-600' },
           { id: 'credit_card', label: 'Cartão', icon: 'fa-credit-card', color: 'text-purple-600' },
+          { id: 'transfer', label: 'Transf.', icon: 'fa-repeat', color: 'text-sky-600' },
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 py-2.5 px-1 rounded-xl font-bold text-[10px] md:text-xs transition-all flex items-center justify-center gap-1.5 ${activeTab === tab.id ? `bg-white ${tab.color} shadow-sm` : 'text-slate-500'}`}><i className={`fas ${tab.icon} text-[9px]`}></i><span>{tab.label}</span></button>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 py-2.5 px-3 min-w-[80px] rounded-xl font-bold text-[10px] md:text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === tab.id ? `bg-white ${tab.color} shadow-sm` : 'text-slate-500'}`}><i className={`fas ${tab.icon} text-[9px]`}></i><span>{tab.label}</span></button>
         ))}
       </div>
 
@@ -59,8 +60,8 @@ const TransactionsList: React.FC = () => {
                 return (
                   <tr key={t.id} className="group hover:bg-slate-50/80 transition-colors">
                     <td className="px-3 py-4 text-[10px] md:text-xs font-bold text-slate-400">{formatDate(t.date)}</td>
-                    <td className="px-1 py-4 overflow-hidden"><div className="flex flex-col min-w-0"><div className="flex items-center gap-2"><span className="font-bold text-slate-800 text-xs md:text-sm truncate">{t.description || 'Sem descrição'}</span>{t.installmentNumber && <span className="bg-purple-50 text-purple-600 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-purple-100 shrink-0">{t.installmentNumber}/{t.totalInstallments}</span>}</div><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[9px] text-violet-500 font-black uppercase tracking-tighter truncate opacity-80">{t.category}</span><span className="text-[9px] text-slate-300">•</span><span className={`text-[8px] font-black px-1 rounded border ${acc?.type === 'cash' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>{acc?.name || 'S/ Conta'}</span></div></div></td>
-                    <td className={`px-2 py-4 text-right font-black text-xs md:text-base ${t.amount >= 0 ? 'text-violet-600' : 'text-slate-900'}`}>{t.amount >= 0 ? '+' : ''} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-1 py-4 overflow-hidden"><div className="flex flex-col min-w-0"><div className="flex items-center gap-2"><span className="font-bold text-slate-800 text-xs md:text-sm truncate">{t.description || 'Sem descrição'}</span>{t.installmentNumber && <span className="bg-purple-50 text-purple-600 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-purple-100 shrink-0">{t.installmentNumber}/{t.totalInstallments}</span>}</div><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[9px] text-violet-500 font-black uppercase tracking-tighter truncate opacity-80">{t.category}</span><span className="text-[9px] text-slate-300">•</span><span className={`text-[8px] font-black px-1 rounded border ${acc?.type === 'cash' ? 'bg-emerald-50 text-emerald-600' : acc?.type === 'credit_card' ? 'bg-violet-50 text-violet-600' : 'bg-slate-50 text-slate-400'}`}>{acc?.name || 'S/ Conta'}</span></div></div></td>
+                    <td className={`px-2 py-4 text-right font-black text-xs md:text-base ${t.type === 'transfer' ? 'text-sky-600' : (t.amount >= 0 ? 'text-violet-600' : 'text-slate-900')}`}>{t.amount >= 0 ? '+' : ''} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="px-3 py-4 text-right"><button onClick={() => setEditingTransaction(t)} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center bg-violet-50 text-violet-600 border border-violet-100 rounded-xl hover:bg-violet-600 hover:text-white transition-all"><i className="fas fa-pen-to-square text-xs md:text-sm"></i></button></td>
                   </tr>
                 );
