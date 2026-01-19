@@ -156,6 +156,19 @@ const UserHome: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
+    // Breakdown de saídas por conta (Total)
+    const expenseAccountMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
+      const acc = bankAccounts.find(a => a.id === t.accountId);
+      if (acc) {
+        const val = Math.abs(t.amount);
+        expenseAccountMap[acc.name] = (expenseAccountMap[acc.name] || 0) + val;
+      }
+    });
+    const expenseAccountBreakdown = Object.entries(expenseAccountMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
     const cashCategoryMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const acc = bankAccounts.find(a => a.id === t.accountId);
@@ -193,7 +206,7 @@ const UserHome: React.FC = () => {
 
     return { 
       totalBalance, totalIncome, totalExpense, cashExpenses, digitalExpenses, 
-      categoryBreakdown, incomeAccountBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
+      categoryBreakdown, incomeAccountBreakdown, expenseAccountBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
     };
   }, [transactions, user, bankAccounts, currentMonth, currentYear]);
 
@@ -264,8 +277,18 @@ const UserHome: React.FC = () => {
             <h3 className="text-lg font-black text-emerald-500 tracking-tight">
               + R$ {stats.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h3>
+            {stats.incomeAccountBreakdown.length > 0 && (
+              <div className="mt-3 space-y-1 pt-2 border-t border-slate-50">
+                {stats.incomeAccountBreakdown.map(item => (
+                  <div key={item.name} className="flex justify-between items-center text-[9px] font-bold">
+                    <span className="text-slate-400 truncate max-w-[80px]">{item.name}</span>
+                    <span className="text-emerald-500">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 pt-2">
              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center"><i className="fas fa-arrow-trend-up text-[10px]"></i></div>
              <span className="text-[9px] text-slate-400 font-bold uppercase">Mês</span>
           </div>
@@ -277,8 +300,18 @@ const UserHome: React.FC = () => {
             <h3 className="text-lg font-black text-rose-500 tracking-tight">
               - R$ {stats.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h3>
+            {stats.expenseAccountBreakdown.length > 0 && (
+              <div className="mt-3 space-y-1 pt-2 border-t border-slate-50">
+                {stats.expenseAccountBreakdown.map(item => (
+                  <div key={item.name} className="flex justify-between items-center text-[9px] font-bold">
+                    <span className="text-slate-400 truncate max-w-[80px]">{item.name}</span>
+                    <span className="text-rose-500">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 pt-2">
              <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center"><i className="fas fa-arrow-trend-down text-[10px]"></i></div>
              <span className="text-[9px] text-slate-400 font-bold uppercase">Mês</span>
           </div>
@@ -291,7 +324,7 @@ const UserHome: React.FC = () => {
               - R$ {stats.cashExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h3>
           </div>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 pt-2">
              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center"><i className="fas fa-wallet text-[10px]"></i></div>
              <span className="text-[9px] text-slate-400 font-bold uppercase">Cash</span>
           </div>
@@ -304,7 +337,7 @@ const UserHome: React.FC = () => {
               - R$ {stats.digitalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h3>
           </div>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 pt-2">
              <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center"><i className="fas fa-university text-[10px]"></i></div>
              <span className="text-[9px] text-slate-400 font-bold uppercase">Digital</span>
           </div>
