@@ -131,6 +131,7 @@ const UserHome: React.FC = () => {
       })
       .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
 
+    // Breakdown de gastos por categoria
     const categoryMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const val = Math.abs(t.amount);
@@ -139,6 +140,19 @@ const UserHome: React.FC = () => {
       }
     });
     const categoryBreakdown = Object.entries(categoryMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    // Breakdown de entradas por conta
+    const incomeAccountMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'income').forEach(t => {
+      const acc = bankAccounts.find(a => a.id === t.accountId);
+      if (acc) {
+        const val = Math.abs(t.amount);
+        incomeAccountMap[acc.name] = (incomeAccountMap[acc.name] || 0) + val;
+      }
+    });
+    const incomeAccountBreakdown = Object.entries(incomeAccountMap)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
@@ -179,7 +193,7 @@ const UserHome: React.FC = () => {
 
     return { 
       totalBalance, totalIncome, totalExpense, cashExpenses, digitalExpenses, 
-      categoryBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
+      categoryBreakdown, incomeAccountBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
     };
   }, [transactions, user, bankAccounts, currentMonth, currentYear]);
 
@@ -299,6 +313,12 @@ const UserHome: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <DashboardWidget 
+          title={`Entradas por Conta (${months[currentMonth]})`} 
+          data={stats.incomeAccountBreakdown} 
+          emptyMessage={`Sem entradas registradas.`}
+          icon="fa-piggy-bank"
+        />
+        <DashboardWidget 
           title={`Gastos por categorias (${months[currentMonth]})`} 
           data={stats.categoryBreakdown} 
           emptyMessage={`Sem gastos registrados.`}
@@ -315,12 +335,6 @@ const UserHome: React.FC = () => {
           data={stats.digitalAccountBreakdown} 
           emptyMessage={`Sem gastos digitais.`}
           icon="fa-university"
-        />
-        <DashboardWidget 
-          title={`Gastos Cartão (${months[currentMonth]})`} 
-          data={stats.cardBreakdown} 
-          emptyMessage={`Sem gastos no cartão.`}
-          icon="fa-credit-card"
         />
       </div>
 
