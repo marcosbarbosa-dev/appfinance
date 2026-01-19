@@ -40,8 +40,7 @@ const VersionView: React.FC = () => {
           {versionLink ? (
             <a 
               href={versionLink}
-              target="_blank"
-              rel="noopener noreferrer"
+              download
               style={{ backgroundColor: versionBtnColor || '#8b5cf6' }}
               className="w-full py-5 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 hover:brightness-110 no-underline"
             >
