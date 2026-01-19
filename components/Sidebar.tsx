@@ -63,6 +63,7 @@ const Sidebar: React.FC = () => {
     { id: 'lancamentos', label: 'Lançamentos', icon: 'fas fa-exchange-alt' },
     { id: 'transferencias', label: 'Transferências', icon: 'fas fa-repeat' },
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
+    { id: 'suporte_usuario', label: 'Suporte', icon: 'fas fa-headset' },
   ];
 
   const handleNavigate = (id: string) => {
@@ -85,7 +86,7 @@ const Sidebar: React.FC = () => {
             <div className="bg-violet-600 p-2 rounded-xl text-white">
               <LogoInfinity className="w-6 h-6" />
             </div>
-            <span className="text-lg font-black text-white italic whitespace-nowrap">Personalle Infinity</span>
+            <span className="text-sm font-light text-white tracking-[0.2em] uppercase whitespace-nowrap">Personalle</span>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="text-slate-500 hover:text-white">
             <i className="fas fa-times text-xl"></i>

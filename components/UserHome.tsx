@@ -115,6 +115,7 @@ const UserHome: React.FC = () => {
       .filter(t => t.type === 'expense' || t.type === 'credit_card')
       .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
 
+    // Gastos por categorias
     const categoryMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const val = Math.abs(t.amount);
@@ -126,18 +127,43 @@ const UserHome: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    const accountMap: Record<string, number> = {};
-    userTransactions.forEach(t => {
+    // Gastos Contas Digitais (Checking, Savings, Investment)
+    const digitalMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const acc = bankAccounts.find(a => a.id === t.accountId);
-      const name = acc ? acc.name : 'Outros';
-      accountMap[name] = (accountMap[name] || 0) + Math.abs(t.amount);
+      if (acc && (acc.type === 'checking' || acc.type === 'savings' || acc.type === 'investment')) {
+        digitalMap[acc.name] = (digitalMap[acc.name] || 0) + Math.abs(t.amount);
+      }
     });
-    const accountBreakdown = Object.entries(accountMap)
+    const digitalBreakdown = Object.entries(digitalMap)
       .map(([name, value]) => ({ name, value }))
-      .filter(item => item.value > 0)
       .sort((a, b) => b.value - a.value);
 
-    return { totalBalance, totalIncome, totalExpense, categoryBreakdown, accountBreakdown };
+    // Gastos Dinheiro (Cash)
+    const cashMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
+      const acc = bankAccounts.find(a => a.id === t.accountId);
+      if (acc && acc.type === 'cash') {
+        cashMap[acc.name] = (cashMap[acc.name] || 0) + Math.abs(t.amount);
+      }
+    });
+    const cashBreakdown = Object.entries(cashMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    // Gastos Cartão (Credit Card)
+    const cardMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
+      const acc = bankAccounts.find(a => a.id === t.accountId);
+      if (acc && acc.type === 'credit_card') {
+        cardMap[acc.name] = (cardMap[acc.name] || 0) + Math.abs(t.amount);
+      }
+    });
+    const cardBreakdown = Object.entries(cardMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return { totalBalance, totalIncome, totalExpense, categoryBreakdown, digitalBreakdown, cashBreakdown, cardBreakdown };
   }, [transactions, user, bankAccounts, currentMonth, currentYear]);
 
   return (
@@ -242,10 +268,22 @@ const UserHome: React.FC = () => {
           icon="fa-chart-pie"
         />
         <DashboardWidget 
-          title={`Uso por Conta (${months[currentMonth]})`} 
-          data={stats.accountBreakdown} 
-          emptyMessage={`Sem movimentação de conta em ${months[currentMonth]}.`}
+          title={`Gastos Contas Digitais (${months[currentMonth]})`} 
+          data={stats.digitalBreakdown} 
+          emptyMessage={`Sem gastos digitais em ${months[currentMonth]}.`}
           icon="fa-building-columns"
+        />
+        <DashboardWidget 
+          title={`Gastos Dinheiro (${months[currentMonth]})`} 
+          data={stats.cashBreakdown} 
+          emptyMessage={`Sem gastos em dinheiro em ${months[currentMonth]}.`}
+          icon="fa-wallet"
+        />
+        <DashboardWidget 
+          title={`Gastos Cartão (${months[currentMonth]})`} 
+          data={stats.cardBreakdown} 
+          emptyMessage={`Sem gastos no cartão em ${months[currentMonth]}.`}
+          icon="fa-credit-card"
         />
       </div>
 

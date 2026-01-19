@@ -7,7 +7,9 @@ const UserNoticeOverlay: React.FC = () => {
 
   // Encontra o primeiro aviso ativo que o usuário logado ainda não deu ciência
   const pendingNotice = useMemo(() => {
-    if (!user) return null;
+    // Importante: acknowledgedNoticeIds inicia como null até que o fetch termine.
+    // Isso evita que o modal apareça e desapareça rapidamente (flicker).
+    if (!user || acknowledgedNoticeIds === null) return null;
     return notices.find(n => n.isActive && !acknowledgedNoticeIds.includes(n.id));
   }, [notices, acknowledgedNoticeIds, user]);
 

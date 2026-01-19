@@ -20,6 +20,7 @@ import LogsPanel from './components/LogsPanel';
 import UserProfile from './components/UserProfile';
 import SupportManager from './components/SupportManager';
 import ConnectivityModal from './components/ConnectivityModal';
+import UserSupportView from './components/UserSupportView';
 
 interface AuthContextType {
   user: User | null;
@@ -45,7 +46,7 @@ interface AuthContextType {
   saveNotice: (notice: Notice) => Promise<void>;
   deleteNotice: (id: string) => Promise<boolean>;
   acknowledgeNotice: (noticeId: string) => Promise<void>;
-  acknowledgedNoticeIds: string[];
+  acknowledgedNoticeIds: string[] | null;
   supportInfo: string;
   setSupportInfo: (info: string) => Promise<void>;
   maintenanceMessage: string;
@@ -100,7 +101,7 @@ const LogoutLoading: React.FC<{ message?: string }> = ({ message = "Processando.
         </div>
       </div>
       <div className="space-y-2">
-        <h2 className="text-white text-xl font-black tracking-tight">Personalle Infinity</h2>
+        <h2 className="text-white text-xl font-black tracking-tight">Personalle</h2>
         <div className="flex items-center justify-center gap-3 px-8">
           <i className="fas fa-circle-notch animate-spin text-violet-400 text-sm"></i>
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">{message || "Saindo com segurança..."}</p>
@@ -126,7 +127,7 @@ const App: React.FC = () => {
   const [bankAccounts, setBankAccountsState] = useState<BankAccount[]>([]);
   const [logs, setLogsState] = useState<SystemLog[]>([]);
   const [notices, setNoticesState] = useState<Notice[]>([]);
-  const [acknowledgedNoticeIds, setAcknowledgedNoticeIds] = useState<string[]>([]);
+  const [acknowledgedNoticeIds, setAcknowledgedNoticeIds] = useState<string[] | null>(null);
   const [supportInfo, setSupportInfoState] = useState("");
   const [maintenanceMessage, setMaintenanceMessageState] = useState("");
   const [isLoggingEnabled, setIsLoggingEnabledState] = useState(true);
@@ -177,7 +178,7 @@ const App: React.FC = () => {
     setCategoriesState([]);
     setTransactionsState([]);
     setBankAccountsState([]);
-    setAcknowledgedNoticeIds([]);
+    setAcknowledgedNoticeIds(null);
     setNoticesState([]);
     
     if (msg && typeof msg === 'string') setLogoutMessage(msg);
@@ -191,11 +192,14 @@ const App: React.FC = () => {
   }, []);
 
   const fetchGlobalConfig = useCallback(async () => {
+    if (!navigator.onLine) return;
     try {
       const { data: configData, error: configError } = await supabase.from('system_config').select('*').maybeSingle();
       
       if (configError) {
-        console.error("Erro ao buscar configuração global:", configError.message);
+        if (!configError.message.toLowerCase().includes('fetch')) {
+          console.error("Erro ao buscar configuração global:", configError.message);
+        }
         return;
       }
 
@@ -218,17 +222,21 @@ const App: React.FC = () => {
         }
       }
     } catch (e: any) {
-      console.error("Erro inesperado na configuração:", e?.message || e);
+      if (e?.name !== 'TypeError') {
+        console.error("Erro inesperado na configuração:", e?.message || e);
+      }
     }
   }, [logout]);
 
   const fetchUserData = useCallback(async (loggedInUser: User) => {
-    if (!userRef.current) return;
+    if (!userRef.current || !navigator.onLine) return;
     try {
       const { data: currentUserStatus, error: fetchError } = await supabase.from('users').select('*').eq('uid', loggedInUser.uid).maybeSingle();
       
       if (fetchError) {
-        console.error("Erro ao validar usuário:", fetchError.message);
+        if (!fetchError.message.toLowerCase().includes('fetch')) {
+          console.error("Erro ao validar usuário:", fetchError.message);
+        }
         return;
       }
 
@@ -273,7 +281,9 @@ const App: React.FC = () => {
         if (accsData) setBankAccountsState(accsData);
       }
     } catch (e: any) {
-      console.error("Erro ao sincronizar dados do usuário:", e?.message || e);
+      if (e?.name !== 'TypeError') {
+        console.error("Erro ao sincronizar dados do usuário:", e?.message || e);
+      }
     }
   }, [logout]);
 
@@ -445,7 +455,6 @@ const App: React.FC = () => {
 
   const deleteNotice = useCallback(async (id: string): Promise<boolean> => {
     try {
-      // Cleanup: Remover vínculos antes de apagar o aviso
       await supabase.from('notice_acknowledgments').delete().eq('noticeId', id);
       const { error: dbError } = await supabase.from('notices').delete().eq('id', id);
       if (dbError) throw dbError;
@@ -461,7 +470,7 @@ const App: React.FC = () => {
   const acknowledgeNotice = useCallback(async (noticeId: string) => {
     if (!user) return;
     await supabase.from('notice_acknowledgments').insert({ userId: user.uid, noticeId });
-    setAcknowledgedNoticeIds(prev => [...prev, noticeId]);
+    setAcknowledgedNoticeIds(prev => [...(prev || []), noticeId]);
   }, [user]);
 
   const setLogs = async (newLogs: SystemLog[]) => setLogsState(newLogs);
@@ -508,6 +517,7 @@ const App: React.FC = () => {
       case 'avisos': return <NoticesManager />;
       case 'adicionar_transacao': return <AddTransaction />;
       case 'meus_dados': return <UserProfile />;
+      case 'suporte_usuario': return <UserSupportView />;
       case 'logs': return <LogsPanel />;
       case 'suporte': return <SupportManager />;
       default: return user?.role === 'admin' ? <AdminDashboard /> : <UserHome />;
