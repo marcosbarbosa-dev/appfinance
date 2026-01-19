@@ -61,6 +61,8 @@ interface AuthContextType {
   clearLogs: () => void;
   activeView: string;
   setActiveView: (view: string) => void;
+  viewMode: 'admin' | 'user';
+  setViewMode: (mode: 'admin' | 'user') => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
   login: (username: string, pass: string) => Promise<void>;
@@ -118,6 +120,7 @@ const App: React.FC = () => {
   });
   
   const userRef = useRef<User | null>(user);
+  const lastUid = useRef<string | null>(user?.uid || null);
   const lastRefreshId = useRef<string | null>(user?.refreshId || null);
   const lastGlobalRefreshId = useRef<string | null>(null);
 
@@ -133,6 +136,7 @@ const App: React.FC = () => {
   const [isLoggingEnabled, setIsLoggingEnabledState] = useState(true);
   const [isSystemLocked, setIsSystemLockedState] = useState(false);
   const [activeView, setActiveView] = useState('inicio');
+  const [viewMode, setViewMode] = useState<'admin' | 'user'>('user');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -145,8 +149,16 @@ const App: React.FC = () => {
     userRef.current = user;
     if (user) {
       localStorage.setItem('personalle_user', JSON.stringify(user));
+      // Só reseta a visão se for um NOVO login ou transição de sessão (uid mudou)
+      if (lastUid.current !== user.uid) {
+        setViewMode(user.role === 'admin' ? 'admin' : 'user');
+        setActiveView(user.role === 'admin' ? 'dashboard' : 'inicio');
+        lastUid.current = user.uid;
+      }
     } else {
       localStorage.removeItem('personalle_user');
+      setViewMode('user');
+      lastUid.current = null;
     }
   }, [user]);
 
@@ -188,6 +200,7 @@ const App: React.FC = () => {
     setIsLoggingOut(false);
     setLogoutMessage("");
     setActiveView('inicio');
+    setViewMode('user');
     setError(null);
   }, []);
 
@@ -342,7 +355,6 @@ const App: React.FC = () => {
         return;
       }
       setUser(data);
-      setActiveView(data.role === 'admin' ? 'dashboard' : 'inicio');
     } catch (e) {
       setError("Falha na conexão.");
     } finally {
@@ -461,8 +473,8 @@ const App: React.FC = () => {
       
       setNoticesState(prev => prev.filter(n => n.id !== id));
       return true;
-    } catch (e: any) {
-      console.error("Erro crítico ao deletar aviso:", e?.message || e);
+    } catch (error) {
+      console.error("Erro crítico ao deletar aviso:", error);
       return false;
     }
   }, []);
@@ -520,7 +532,7 @@ const App: React.FC = () => {
       case 'suporte_usuario': return <UserSupportView />;
       case 'logs': return <LogsPanel />;
       case 'suporte': return <SupportManager />;
-      default: return user?.role === 'admin' ? <AdminDashboard /> : <UserHome />;
+      default: return viewMode === 'admin' ? <AdminDashboard /> : <UserHome />;
     }
   };
 
@@ -536,7 +548,7 @@ const App: React.FC = () => {
       supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
       isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
       triggerGlobalRefresh,
-      addLog, deleteLog, clearLogs, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
+      addLog, deleteLog, clearLogs, activeView, setActiveView, viewMode, setViewMode, isSidebarOpen, setIsSidebarOpen,
       login, logout, updatePassword, updateProfile, isOnline, checkInternet
     }}>
       {!user ? (

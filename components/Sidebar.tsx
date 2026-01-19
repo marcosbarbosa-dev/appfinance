@@ -36,7 +36,7 @@ const LogoInfinity = ({ className = "w-6 h-6" }: { className?: string }) => (
 );
 
 const Sidebar: React.FC = () => {
-  const { user, logout, activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, isOnline } = useAuth();
+  const { user, logout, activeView, setActiveView, viewMode, setViewMode, isSidebarOpen, setIsSidebarOpen, isOnline } = useAuth();
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -48,7 +48,7 @@ const Sidebar: React.FC = () => {
     }
   };
 
-  const menuItems = user?.role === 'admin' ? [
+  const menuItems = viewMode === 'admin' ? [
     { id: 'dashboard', label: 'Monitoração', icon: 'fas fa-shield-alt' },
     { id: 'usuarios', label: 'Usuários', icon: 'fas fa-users' },
     { id: 'logs', label: 'Logs do System', icon: 'fas fa-history' },
@@ -69,6 +69,11 @@ const Sidebar: React.FC = () => {
   const handleNavigate = (id: string) => {
     setActiveView(id);
     setIsSidebarOpen(false);
+  };
+
+  const handleToggleViewMode = (mode: 'admin' | 'user') => {
+    setViewMode(mode);
+    setActiveView(mode === 'admin' ? 'dashboard' : 'inicio');
   };
 
   return (
@@ -100,13 +105,33 @@ const Sidebar: React.FC = () => {
             </div>
             <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-slate-950 rounded-full ${isOnline ? 'bg-violet-600' : 'bg-rose-50  '}`}></div>
           </div>
-          <div className="text-center mt-2">
-            <p className="text-white font-black truncate max-w-[180px]">{user?.name}</p>
-            <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black">
-              {user?.role === 'admin' ? 'Controller' : 'PLATINUM'}
-            </p>
+          <div className="text-center mt-2 w-full px-4">
+            <p className="text-white font-black truncate max-w-[180px] mx-auto">{user?.name}</p>
+            
+            <div className="mt-1 relative flex justify-center">
+              {user?.role === 'admin' ? (
+                <div className="relative inline-block w-full max-w-[120px]">
+                  <select 
+                    value={viewMode}
+                    onChange={(e) => handleToggleViewMode(e.target.value as 'admin' | 'user')}
+                    className="w-full appearance-none bg-slate-900 border border-slate-800 text-[7px] text-violet-400 font-black uppercase tracking-widest text-center py-1 px-4 rounded-lg outline-none focus:ring-1 focus:ring-violet-500/50 cursor-pointer"
+                  >
+                    <option value="admin">Supervisor</option>
+                    <option value="user">Usuário</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-violet-400/50 text-[7px]">
+                    <i className="fas fa-chevron-down"></i>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black">
+                  PLATINUM
+                </p>
+              )}
+            </div>
+
             {user?.role !== 'admin' && (
-              <div className="mt-1 flex items-center justify-center gap-1.5 opacity-80">
+              <div className="mt-2 flex items-center justify-center gap-1.5 opacity-80">
                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">Vencimento:</span>
                 <span className={`text-[9px] font-black uppercase flex items-center gap-1 ${user?.suspensionDate ? 'text-rose-400' : 'text-amber-400'}`}>
                   {user?.suspensionDate ? (
