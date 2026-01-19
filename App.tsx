@@ -1,6 +1,6 @@
 
 import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
-import { User, Category, Transaction, TransactionType, BankAccount, SystemLog, LogAction, Notice } from './types';
+import { User, Category, Transaction, TransactionType, BankAccount, SystemLog, LogAction, Notice, Goal } from './types';
 import { supabase } from './supabase';
 import LoginForm from './components/LoginForm';
 import UserHome from './components/UserHome';
@@ -13,6 +13,7 @@ import CategoriesManager from './components/CategoriesManager';
 import TransactionsList from './components/TransactionsList';
 import AccountsManager from './components/AccountsManager';
 import TransfersManager from './components/TransfersManager';
+import GoalsManager from './components/GoalsManager';
 import NoticesManager from './components/NoticesManager';
 import UserNoticeOverlay from './components/UserNoticeOverlay';
 import ReportsView from './components/ReportsView';
@@ -22,6 +23,7 @@ import SupportManager from './components/SupportManager';
 import ConnectivityModal from './components/ConnectivityModal';
 import UserSupportView from './components/UserSupportView';
 import ConfigManager from './components/ConfigManager';
+import VersionView from './components/VersionView';
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +43,9 @@ interface AuthContextType {
   saveBankAccount: (acc: BankAccount) => Promise<void>;
   saveBankAccountsBatch: (accs: BankAccount[]) => Promise<void>;
   deleteBankAccount: (id: string) => Promise<void>;
+  goals: Goal[];
+  saveGoal: (goal: Goal) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
   logs: SystemLog[];
   setLogs: (logs: SystemLog[]) => Promise<void>;
   notices: Notice[];
@@ -50,7 +55,11 @@ interface AuthContextType {
   acknowledgedNoticeIds: string[] | null;
   supportInfo: string;
   maintenanceMessage: string;
-  updateAppConfig: (config: { supportInfo?: string, maintenanceMessage?: string, isLoggingEnabled?: boolean, isSystemLocked?: boolean }) => Promise<void>;
+  versionLink: string;
+  versionText: string;
+  versionBtnColor: string;
+  versionBtnLabel: string;
+  updateAppConfig: (config: { supportInfo?: string, maintenanceMessage?: string, isLoggingEnabled?: boolean, isSystemLocked?: boolean, versionLink?: string, versionText?: string, versionBtnColor?: string, versionBtnLabel?: string }) => Promise<void>;
   loginTitle: string;
   setLoginTitle: (title: string) => Promise<void>;
   sidebarTitle: string;
@@ -144,11 +153,16 @@ const App: React.FC = () => {
   const [categories, setCategoriesState] = useState<Category[]>([]);
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
   const [bankAccounts, setBankAccountsState] = useState<BankAccount[]>([]);
+  const [goals, setGoalsState] = useState<Goal[]>([]);
   const [logs, setLogsState] = useState<SystemLog[]>([]);
   const [notices, setNoticesState] = useState<Notice[]>([]);
   const [acknowledgedNoticeIds, setAcknowledgedNoticeIds] = useState<string[] | null>(null);
   const [supportInfo, setSupportInfoState] = useState("");
   const [maintenanceMessage, setMaintenanceMessageState] = useState("");
+  const [versionLink, setVersionLinkState] = useState("");
+  const [versionText, setVersionTextState] = useState("");
+  const [versionBtnColor, setVersionBtnColorState] = useState("#8b5cf6");
+  const [versionBtnLabel, setVersionBtnLabelState] = useState("Verificar Atualizações");
   const [loginTitle, setLoginTitleState] = useState("Personalle Infinity");
   const [sidebarTitle, setSidebarTitleState] = useState("Personalle");
   const [logoutTitle, setLogoutTitleState] = useState("Personalle");
@@ -211,6 +225,7 @@ const App: React.FC = () => {
     setCategoriesState([]);
     setTransactionsState([]);
     setBankAccountsState([]);
+    setGoalsState([]);
     setAcknowledgedNoticeIds(null);
     setNoticesState([]);
     
@@ -228,11 +243,14 @@ const App: React.FC = () => {
   const fetchGlobalConfig = useCallback(async () => {
     if (!navigator.onLine) return;
     try {
-      // Busca status do sistema (app_config) com mapeamento snake_case
       const { data: configData, error: configError } = await supabase.from('app_config').select('*').eq('id', 'main').maybeSingle();
       if (configData) {
         setSupportInfoState(configData.support_info || "");
         setMaintenanceMessageState(configData.maintenance_message || "");
+        setVersionLinkState(configData.version_link || "");
+        setVersionTextState(configData.version_text || "");
+        setVersionBtnColorState(configData.version_btn_color || "#8b5cf6");
+        setVersionBtnLabelState(configData.version_btn_label || "Verificar Atualizações");
         setIsLoggingEnabledState(configData.is_logging_enabled ?? true);
         setIsSystemLockedState(configData.is_system_locked ?? false);
 
@@ -249,7 +267,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Busca identidade visual (ui_config)
       const { data: uiData } = await supabase.from('ui_config').select('*').eq('id', 'main').maybeSingle();
       if (uiData) {
         setLoginTitleState(uiData.loginTitle || "Personalle Infinity");
@@ -314,6 +331,8 @@ const App: React.FC = () => {
         if (transData) setTransactionsState(transData);
         const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
         if (accsData) setBankAccountsState(accsData);
+        const { data: goalsData } = await supabase.from('goals').select('*').eq('userId', loggedInUser.uid);
+        if (goalsData) setGoalsState(goalsData);
       }
     } catch (e: any) {
       if (e?.name !== 'TypeError') {
@@ -478,6 +497,41 @@ const App: React.FC = () => {
     setBankAccountsState(prev => prev.filter(a => a.id !== id));
   };
 
+  const saveGoal = async (goal: Goal) => {
+    if (!user) return;
+    
+    // Atualização Otimista: Muda a UI primeiro
+    setGoalsState(prev => {
+      const exists = prev.find(g => g.id === goal.id);
+      if (exists) return prev.map(g => g.id === goal.id ? goal : g);
+      return [goal, ...prev];
+    });
+
+    try {
+      const { error } = await supabase.from('goals').upsert(goal);
+      if (error) {
+        console.error("Erro ao salvar meta no banco:", error.message);
+      }
+    } catch (e) {
+      console.error("Exceção ao persistir meta:", e);
+    }
+  };
+
+  const deleteGoal = async (id: string) => {
+    // Atualização Otimista: remove da UI instantaneamente para evitar reaparecimento
+    setGoalsState(prev => prev.filter(g => g.id !== id));
+    
+    try {
+      const { error } = await supabase.from('goals').delete().eq('id', id);
+      if (error) {
+        console.error("Erro ao deletar meta no banco:", error.message);
+        // Em caso de erro real, o próximo ciclo de fetchUserData (10s) restaurará o dado correto
+      }
+    } catch (e) {
+      console.error("Exceção ao deletar meta:", e);
+    }
+  };
+
   const saveNotice = useCallback(async (notice: Notice) => {
     await supabase.from('notices').upsert(notice);
     setNoticesState(prev => {
@@ -517,13 +571,16 @@ const App: React.FC = () => {
     setLogsState([]);
   };
 
-  const updateAppConfig = async (config: { supportInfo?: string, maintenanceMessage?: string, isLoggingEnabled?: boolean, isSystemLocked?: boolean }) => {
-    // Mapeamento de camelCase para snake_case para o banco de dados
+  const updateAppConfig = async (config: { supportInfo?: string, maintenanceMessage?: string, isLoggingEnabled?: boolean, isSystemLocked?: boolean, versionLink?: string, versionText?: string, versionBtnColor?: string, versionBtnLabel?: string }) => {
     const dbPayload: any = { id: 'main' };
     if (config.supportInfo !== undefined) dbPayload.support_info = config.supportInfo;
     if (config.maintenanceMessage !== undefined) dbPayload.maintenance_message = config.maintenanceMessage;
     if (config.isLoggingEnabled !== undefined) dbPayload.is_logging_enabled = config.isLoggingEnabled;
     if (config.isSystemLocked !== undefined) dbPayload.is_system_locked = config.isSystemLocked;
+    if (config.versionLink !== undefined) dbPayload.version_link = config.versionLink;
+    if (config.versionText !== undefined) dbPayload.version_text = config.versionText;
+    if (config.versionBtnColor !== undefined) dbPayload.version_btn_color = config.versionBtnColor;
+    if (config.versionBtnLabel !== undefined) dbPayload.version_btn_label = config.versionBtnLabel;
 
     const { error } = await supabase.from('app_config').upsert(dbPayload);
     if (error) throw error;
@@ -532,6 +589,10 @@ const App: React.FC = () => {
     if (config.maintenanceMessage !== undefined) setMaintenanceMessageState(config.maintenanceMessage);
     if (config.isLoggingEnabled !== undefined) setIsLoggingEnabledState(config.isLoggingEnabled);
     if (config.isSystemLocked !== undefined) setIsSystemLockedState(config.isSystemLocked);
+    if (config.versionLink !== undefined) setVersionLinkState(config.versionLink);
+    if (config.versionText !== undefined) setVersionTextState(config.versionText);
+    if (config.versionBtnColor !== undefined) setVersionBtnColorState(config.versionBtnColor);
+    if (config.versionBtnLabel !== undefined) setVersionBtnLabelState(config.versionBtnLabel);
   };
 
   const setLoginTitle = async (title: string) => {
@@ -585,11 +646,13 @@ const App: React.FC = () => {
       case 'categorias': return <CategoriesManager />;
       case 'lancamentos': return <TransactionsList />;
       case 'transferencias': return <TransfersManager />;
+      case 'metas': return <GoalsManager />;
       case 'avisos': return <NoticesManager />;
       case 'config': return <ConfigManager />;
       case 'adicionar_transacao': return <AddTransaction />;
       case 'meus_dados': return <UserProfile />;
       case 'suporte_usuario': return <UserSupportView />;
+      case 'versao': return <VersionView />;
       case 'logs': return <LogsPanel />;
       case 'suporte': return <SupportManager />;
       default: return viewMode === 'admin' ? <AdminDashboard /> : <UserHome />;
@@ -604,8 +667,9 @@ const App: React.FC = () => {
       categories, saveCategory, saveCategoriesBatch, deleteCategory,
       transactions, saveTransaction, saveTransactions, deleteTransactionFromDb,
       bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
+      goals, saveGoal, deleteGoal,
       logs, setLogs, notices, saveNotice, deleteNotice, acknowledgeNotice, acknowledgedNoticeIds,
-      supportInfo, maintenanceMessage, updateAppConfig,
+      supportInfo, maintenanceMessage, versionLink, versionText, versionBtnColor, versionBtnLabel, updateAppConfig,
       loginTitle, setLoginTitle, sidebarTitle, setSidebarTitle, 
       logoutTitle, setLogoutTitle, logoutMessage: logoutMessageConfig, setLogoutMessageConfig,
       logoData, setLogoData,

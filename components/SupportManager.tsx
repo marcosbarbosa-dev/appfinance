@@ -1,12 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 
 const SupportManager: React.FC = () => {
-  const { supportInfo, maintenanceMessage, isSystemLocked, updateAppConfig, triggerGlobalRefresh, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet } = useAuth();
+  const { supportInfo, maintenanceMessage, versionLink, versionText, versionBtnColor, versionBtnLabel, isSystemLocked, updateAppConfig, triggerGlobalRefresh, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet } = useAuth();
+  
   const [tempSupport, setTempSupport] = useState(supportInfo);
   const [tempMaintenance, setTempMaintenance] = useState(maintenanceMessage);
+  const [tempVersionLink, setTempVersionLink] = useState(versionLink);
+  const [tempVersionText, setTempVersionText] = useState(versionText);
+  const [tempVersionBtnColor, setTempVersionBtnColor] = useState(versionBtnColor);
+  const [tempVersionBtnLabel, setTempVersionBtnLabel] = useState(versionBtnLabel);
   const [tempLocked, setTempLocked] = useState(isSystemLocked);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +23,17 @@ const SupportManager: React.FC = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [actionError, setActionError] = useState('');
 
+  // Sincronizar estados locais quando os globais mudarem (útil se outro admin mudar algo)
+  useEffect(() => {
+    setTempSupport(supportInfo);
+    setTempMaintenance(maintenanceMessage);
+    setTempVersionLink(versionLink);
+    setTempVersionText(versionText);
+    setTempVersionBtnColor(versionBtnColor);
+    setTempVersionBtnLabel(versionBtnLabel);
+    setTempLocked(isSystemLocked);
+  }, [supportInfo, maintenanceMessage, versionLink, versionText, versionBtnColor, versionBtnLabel, isSystemLocked]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkInternet()) return;
@@ -26,30 +43,23 @@ const SupportManager: React.FC = () => {
     setShowSuccess(false);
 
     try {
-      // Salva todas as configurações em uma única chamada unificada
       await updateAppConfig({
         supportInfo: tempSupport,
         maintenanceMessage: tempMaintenance,
-        isSystemLocked: tempLocked
+        isSystemLocked: tempLocked,
+        versionLink: tempVersionLink,
+        versionText: tempVersionText,
+        versionBtnColor: tempVersionBtnColor,
+        versionBtnLabel: tempVersionBtnLabel
       });
       
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err: any) {
       console.error("Erro técnico ao salvar suporte:", err);
-      
-      // Tratamento robusto para evitar [object Object] na tela
       let errorMsg = "Erro ao salvar as configurações.";
-      if (typeof err === 'string') {
-        errorMsg = err;
-      } else if (err && err.message) {
-        errorMsg = err.message;
-      } else if (err && err.details) {
-        errorMsg = typeof err.details === 'string' ? err.details : JSON.stringify(err.details);
-      } else {
-        errorMsg = JSON.stringify(err);
-      }
-      
+      if (typeof err === 'string') errorMsg = err;
+      else if (err && err.message) errorMsg = err.message;
       setError(errorMsg);
     } finally {
       setIsSaving(false);
@@ -131,39 +141,140 @@ const SupportManager: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
-            <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-headset text-emerald-500"></i>Canais de Suporte</h3>
-            <textarea value={tempSupport} onChange={(e) => setTempSupport(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Texto de suporte..." />
+      <form onSubmit={handleSave} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-headset text-emerald-500"></i>Canais de Suporte</h3>
+              <textarea value={tempSupport} onChange={(e) => setTempSupport(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Texto de suporte..." />
+            </div>
+
+            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-lock text-rose-500"></i>Trava do Sistema</h3>
+                <button type="button" onClick={() => setTempLocked(!tempLocked)} className={`w-12 h-6 rounded-full relative transition-all duration-300 flex items-center px-0.5 ${tempLocked ? 'bg-rose-500 shadow-lg' : 'bg-slate-200'}`}><div className={`w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center transition-all ${tempLocked ? 'translate-x-6' : 'translate-x-0'}`}><i className={`fas ${tempLocked ? 'fa-lock' : 'fa-unlock'} text-[8px]`}></i></div></button>
+              </div>
+              <textarea value={tempMaintenance} onChange={(e) => setTempMaintenance(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Mensagem de manutenção..." />
+            </div>
           </div>
 
-          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-lock text-rose-500"></i>Trava do Sistema</h3>
-              <button type="button" onClick={() => setTempLocked(!tempLocked)} className={`w-12 h-6 rounded-full relative transition-all duration-300 flex items-center px-0.5 ${tempLocked ? 'bg-rose-500 shadow-lg' : 'bg-slate-200'}`}><div className={`w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center transition-all ${tempLocked ? 'translate-x-6' : 'translate-x-0'}`}><i className={`fas ${tempLocked ? 'fa-lock' : 'fa-unlock'} text-[8px]`}></i></div></button>
-            </div>
-            <textarea value={tempMaintenance} onChange={(e) => setTempMaintenance(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Mensagem de manutenção..." />
+          <div className="bg-slate-100/40 p-8 rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[300px]">
+             <div className="bg-white w-full max-w-[240px] rounded-[3rem] shadow-2xl p-6 space-y-4 text-center">
+                <div className={`w-16 h-16 mx-auto ${tempLocked ? 'bg-rose-50 text-rose-500' : 'bg-violet-50 text-violet-500'} rounded-3xl flex items-center justify-center text-2xl`}><i className={`fas ${tempLocked ? 'fa-shield-virus' : 'fa-headset'}`}></i></div>
+                <p className="text-xs font-bold text-slate-800">{tempLocked ? 'Acesso Restrito' : 'Suporte Ativo'}</p>
+                <div className="bg-slate-50 p-3 rounded-xl"><p className="text-[10px] text-slate-500 italic leading-relaxed">{tempLocked ? tempMaintenance : tempSupport}</p></div>
+             </div>
           </div>
-
-          {error && (
-            <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-100 animate-in shake">
-              <i className="fas fa-exclamation-triangle mr-2"></i>
-              {error}
-            </div>
-          )}
-
-          <button type="submit" disabled={isSaving} className={`w-full py-4 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all ${tempLocked ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-900'}`}>{isSaving ? 'Salvando...' : 'Publicar Alterações'}</button>
-        </form>
-
-        <div className="bg-slate-100/40 p-8 rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[300px]">
-           <div className="bg-white w-full max-w-[240px] rounded-[3rem] shadow-2xl p-6 space-y-4 text-center">
-              <div className={`w-16 h-16 mx-auto ${tempLocked ? 'bg-rose-50 text-rose-500' : 'bg-violet-50 text-violet-500'} rounded-3xl flex items-center justify-center text-2xl`}><i className={`fas ${tempLocked ? 'fa-shield-virus' : 'fa-headset'}`}></i></div>
-              <p className="text-xs font-bold text-slate-800">{tempLocked ? 'Acesso Restrito' : 'Suporte Ativo'}</p>
-              <div className="bg-slate-50 p-3 rounded-xl"><p className="text-[10px] text-slate-500 italic leading-relaxed">{tempLocked ? tempMaintenance : tempSupport}</p></div>
-           </div>
         </div>
-      </div>
+
+        {/* NOVA SEÇÃO: CONFIGURAÇÃO DA PÁGINA DE VERSÃO */}
+        <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-violet-100 shadow-xl shadow-violet-50/20 space-y-8">
+          <div className="flex items-center gap-4 border-b border-slate-50 pb-6">
+            <div className="w-12 h-12 bg-violet-600 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg">
+              <i className="fas fa-code-branch"></i>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Página de Versão do Usuário</h3>
+              <p className="text-xs text-slate-400 font-medium">Personalize como os membros visualizam o status do sistema</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Texto Informativo</label>
+                <textarea 
+                  value={tempVersionText} 
+                  onChange={(e) => setTempVersionText(e.target.value)} 
+                  className="w-full h-32 px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm bg-white text-black font-bold custom-scrollbar" 
+                  placeholder="Descreva o status da versão atual para os membros..." 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Nome no Botão</label>
+                  <input 
+                    type="text" 
+                    value={tempVersionBtnLabel} 
+                    onChange={(e) => setTempVersionBtnLabel(e.target.value)} 
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm bg-white text-black font-bold" 
+                    placeholder="Ex: Verificar Atualizações" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Cor do Botão (HEX)</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={tempVersionBtnColor} 
+                      onChange={(e) => setTempVersionBtnColor(e.target.value)} 
+                      className="w-12 h-11 rounded-xl border-none cursor-pointer bg-transparent" 
+                    />
+                    <input 
+                      type="text" 
+                      value={tempVersionBtnColor} 
+                      onChange={(e) => setTempVersionBtnColor(e.target.value)} 
+                      className="flex-1 px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm bg-white text-black font-mono font-bold uppercase" 
+                      placeholder="#8b5cf6" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Link de Redirecionamento</label>
+                <input 
+                  type="url" 
+                  value={tempVersionLink} 
+                  onChange={(e) => setTempVersionLink(e.target.value)} 
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm bg-white text-black font-bold" 
+                  placeholder="https://exemplo.com/nova-versao" 
+                />
+              </div>
+            </div>
+
+            {/* Preview da Versão no Admin */}
+            <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col items-center justify-center space-y-4">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Pré-visualização</p>
+              <div className="bg-white p-6 rounded-3xl shadow-xl w-full max-w-xs space-y-4 text-center">
+                <div className="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                  <i className="fas fa-code-branch"></i>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Versão Premium</p>
+                  <p className="text-[10px] text-slate-600 font-medium leading-relaxed line-clamp-3">
+                    {tempVersionText || "Seu texto aparecerá aqui..."}
+                  </p>
+                </div>
+                <button 
+                  type="button"
+                  style={{ backgroundColor: tempVersionBtnColor }}
+                  className="w-full py-3 rounded-xl text-white font-black text-[10px] uppercase tracking-widest shadow-lg"
+                >
+                  {tempVersionBtnLabel || "Botão"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-100 animate-in shake">
+            <i className="fas fa-exclamation-triangle mr-2"></i>
+            {error}
+          </div>
+        )}
+
+        <button type="submit" disabled={isSaving} className={`w-full py-5 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all ${tempLocked ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-900'}`}>
+          {isSaving ? (
+            <span className="flex items-center justify-center gap-2">
+              <i className="fas fa-circle-notch animate-spin"></i>
+              Gravando Configurações...
+            </span>
+          ) : 'Publicar Todas as Alterações'}
+        </button>
+      </form>
 
       {/* Modais de Confirmação Crítica */}
       {(showKickConfirm || showRefreshConfirm) && (

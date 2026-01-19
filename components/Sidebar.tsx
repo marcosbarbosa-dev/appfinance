@@ -63,8 +63,10 @@ const Sidebar: React.FC = () => {
     { id: 'categorias', label: 'Categorias', icon: 'fas fa-tags' },
     { id: 'lancamentos', label: 'Lançamentos', icon: 'fas fa-exchange-alt' },
     { id: 'transferencias', label: 'Transferências', icon: 'fas fa-repeat' },
+    { id: 'metas', label: 'Metas', icon: 'fas fa-bullseye' },
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
     { id: 'suporte_usuario', label: 'Suporte', icon: 'fas fa-headset' },
+    { id: 'versao', label: 'Versão', icon: 'fas fa-code-branch' },
   ];
 
   const handleNavigate = (id: string) => {

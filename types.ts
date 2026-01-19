@@ -47,6 +47,17 @@ export interface BankAccount {
   bankName: string;
 }
 
+export interface Goal {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  icon: string;
+  color: string;
+  createdAt: string;
+}
+
 export type LogAction = 'login' | 'logout' | 'create_user' | 'edit_user' | 'delete_user';
 
 export interface SystemLog {
