@@ -7,6 +7,7 @@ const VersionView: React.FC = () => {
   
   const handleUpdateClick = () => {
     if (versionLink) {
+      // Abre em uma nova página/aba fora da aplicação atual
       window.open(versionLink, '_blank', 'noopener,noreferrer');
     }
   };
@@ -30,9 +31,6 @@ const VersionView: React.FC = () => {
         <div className="relative">
           <div className="w-24 h-24 bg-violet-50 text-violet-600 rounded-[2.5rem] flex items-center justify-center text-4xl shadow-inner">
             <i className="fas fa-code-branch"></i>
-          </div>
-          <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg border-2 border-white animate-bounce-subtle">
-            V2.4.0
           </div>
         </div>
         
