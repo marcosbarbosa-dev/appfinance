@@ -158,7 +158,7 @@ const ReportsView: React.FC = () => {
           4: { halign: 'right', fontStyle: 'bold' },
           5: { fontStyle: 'italic', fontSize: 7 }
         },
-        didParseCell: function(data) {
+        didParseCell: function(data: any) {
           if (data.section === 'body') {
             const rowType = data.row.cells[5].text[0];
             if (data.column.index === 4) {
