@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
+import { supabase } from '../supabase';
 
 const SupportManager: React.FC = () => {
   const { supportInfo, maintenanceMessage, versionLink, versionText, versionBtnColor, versionBtnLabel, isSystemLocked, updateAppConfig, triggerGlobalRefresh, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet } = useAuth();
@@ -14,8 +15,11 @@ const SupportManager: React.FC = () => {
   const [tempLocked, setTempLocked] = useState(isSystemLocked);
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const apkInputRef = useRef<HTMLInputElement>(null);
 
   // Estados para comandos manuais do ADM
   const [showKickConfirm, setShowKickConfirm] = useState(false);
@@ -23,7 +27,6 @@ const SupportManager: React.FC = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [actionError, setActionError] = useState('');
 
-  // Sincronizar estados locais quando os globais mudarem (útil se outro admin mudar algo)
   useEffect(() => {
     setTempSupport(supportInfo);
     setTempMaintenance(maintenanceMessage);
@@ -33,6 +36,45 @@ const SupportManager: React.FC = () => {
     setTempVersionBtnLabel(versionBtnLabel);
     setTempLocked(isSystemLocked);
   }, [supportInfo, maintenanceMessage, versionLink, versionText, versionBtnColor, versionBtnLabel, isSystemLocked]);
+
+  const handleApkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !checkInternet()) return;
+
+    if (!file.name.endsWith('.apk')) {
+      alert("Por favor, selecione um arquivo válido com extensão .apk");
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `app-version-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload do arquivo para o bucket 'apks' do Supabase
+      // Importante: O bucket 'apks' deve ser criado no Supabase com política de acesso público para leitura
+      const { data, error: uploadError } = await supabase.storage
+        .from('apks')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Gera a URL pública do arquivo
+      const { data: { publicUrl } } = supabase.storage
+        .from('apks')
+        .getPublicUrl(filePath);
+
+      setTempVersionLink(publicUrl);
+    } catch (err: any) {
+      console.error("Erro no upload:", err);
+      setError("Erro ao fazer upload do APK. Certifique-se de que o bucket 'apks' existe no Supabase.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +209,7 @@ const SupportManager: React.FC = () => {
           </div>
         </div>
 
-        {/* NOVA SEÇÃO: CONFIGURAÇÃO DA PÁGINA DE VERSÃO */}
+        {/* SEÇÃO: CONFIGURAÇÃO DA PÁGINA DE VERSÃO */}
         <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-violet-100 shadow-xl shadow-violet-50/20 space-y-8">
           <div className="flex items-center gap-4 border-b border-slate-50 pb-6">
             <div className="w-12 h-12 bg-violet-600 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg">
@@ -175,7 +217,7 @@ const SupportManager: React.FC = () => {
             </div>
             <div>
               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Página de Versão do Usuário</h3>
-              <p className="text-xs text-slate-400 font-medium">Personalize como os membros visualizam o status do sistema</p>
+              <p className="text-xs text-slate-400 font-medium">Gerencie o download do aplicativo .apk</p>
             </div>
           </div>
 
@@ -222,27 +264,70 @@ const SupportManager: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Link de Redirecionamento</label>
+              {/* UPLOAD DE APK AO INVÉS DE LINK */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Arquivo APK de Atualização</label>
+                <div className="flex flex-col gap-3">
+                  <div 
+                    onClick={() => !isUploading && apkInputRef.current?.click()}
+                    className={`w-full p-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all group ${
+                      isUploading ? 'bg-slate-50 border-slate-200 cursor-not-allowed' : 'border-violet-100 bg-violet-50/30 hover:bg-violet-50 hover:border-violet-300'
+                    }`}
+                  >
+                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-violet-600 group-hover:scale-110 transition-transform">
+                      {isUploading ? (
+                        <i className="fas fa-circle-notch animate-spin text-xl"></i>
+                      ) : (
+                        <i className="fas fa-file-export"></i>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-black text-slate-700 uppercase tracking-tight">
+                        {isUploading ? 'Enviando Arquivo...' : (tempVersionLink ? 'Substituir APK Atual' : 'Selecionar Arquivo .APK')}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-bold">O link será gerado automaticamente após o upload</p>
+                    </div>
+                  </div>
+                  
+                  {tempVersionLink && (
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl animate-in slide-in-from-top-2">
+                      <div className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center text-xs">
+                        <i className="fas fa-check"></i>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Link Gerado no Supabase</p>
+                        <p className="text-[9px] text-emerald-400 truncate font-mono">{tempVersionLink}</p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setTempVersionLink('')}
+                        className="text-emerald-300 hover:text-rose-500 transition-colors p-2"
+                        title="Limpar Link"
+                      >
+                        <i className="fas fa-trash-alt text-xs"></i>
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <input 
-                  type="url" 
-                  value={tempVersionLink} 
-                  onChange={(e) => setTempVersionLink(e.target.value)} 
-                  className="w-full px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm bg-white text-black font-bold" 
-                  placeholder="https://exemplo.com/nova-versao" 
+                  type="file" 
+                  ref={apkInputRef} 
+                  onChange={handleApkUpload} 
+                  accept=".apk" 
+                  className="hidden" 
                 />
               </div>
             </div>
 
             {/* Preview da Versão no Admin */}
             <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col items-center justify-center space-y-4">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Pré-visualização</p>
-              <div className="bg-white p-6 rounded-3xl shadow-xl w-full max-w-xs space-y-4 text-center">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Pré-visualização do Usuário</p>
+              <div className="bg-white p-6 rounded-3xl shadow-xl w-full max-w-[260px] space-y-4 text-center">
                 <div className="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
                   <i className="fas fa-code-branch"></i>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Versão Premium</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Infinity Premium</p>
                   <p className="text-[10px] text-slate-600 font-medium leading-relaxed line-clamp-3">
                     {tempVersionText || "Seu texto aparecerá aqui..."}
                   </p>
@@ -250,8 +335,9 @@ const SupportManager: React.FC = () => {
                 <button 
                   type="button"
                   style={{ backgroundColor: tempVersionBtnColor }}
-                  className="w-full py-3 rounded-xl text-white font-black text-[10px] uppercase tracking-widest shadow-lg"
+                  className="w-full py-3 rounded-xl text-white font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2"
                 >
+                  <i className="fas fa-cloud-arrow-down text-[8px]"></i>
                   {tempVersionBtnLabel || "Botão"}
                 </button>
               </div>
@@ -266,7 +352,7 @@ const SupportManager: React.FC = () => {
           </div>
         )}
 
-        <button type="submit" disabled={isSaving} className={`w-full py-5 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all ${tempLocked ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-900'}`}>
+        <button type="submit" disabled={isSaving || isUploading} className={`w-full py-5 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all ${tempLocked ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-900'} disabled:opacity-50`}>
           {isSaving ? (
             <span className="flex items-center justify-center gap-2">
               <i className="fas fa-circle-notch animate-spin"></i>
