@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import { BankAccount } from '../types';
 
 const AccountsManager: React.FC = () => {
-  const { bankAccounts, saveBankAccount, deleteBankAccount, setIsSidebarOpen, checkInternet } = useAuth();
+  const { bankAccounts, transactions, saveBankAccount, deleteBankAccount, setIsSidebarOpen, checkInternet } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   
@@ -62,7 +62,7 @@ const AccountsManager: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
         <div className="flex items-center gap-4">
           <button onClick={() => setIsSidebarOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 shadow-sm transition-all"><i className="fas fa-bars"></i></button>
@@ -77,24 +77,35 @@ const AccountsManager: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {bankAccounts.map((acc) => {
           const isImmutable = acc.name === 'Dinheiro' && acc.type === 'cash';
+          const balance = transactions
+            .filter(t => t.accountId === acc.id)
+            .reduce((sum, t) => sum + t.amount, 0);
+
           return (
             <div key={acc.id} className={`bg-white p-6 rounded-3xl border shadow-sm hover:shadow-md transition-all group relative ${isImmutable ? 'border-amber-100' : 'border-slate-100'}`}>
               <div className="flex items-center gap-4">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl shadow-sm ${acc.type === 'credit_card' ? 'bg-violet-50 text-violet-600' : acc.type === 'cash' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   <i className={`fas ${getTypeIcon(acc.type)}`}></i>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <div className="flex-1 overflow-hidden">
+                  <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2 truncate">
                     {acc.name}
                     {isImmutable && <i className="fas fa-shield-halved text-amber-400 text-xs" title="Conta Protegida"></i>}
                   </h4>
-                  <p className="text-sm text-slate-400 font-medium">{acc.bankName}</p>
-                  <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    {acc.type === 'credit_card' ? 'Cartão de Crédito' : acc.type === 'cash' ? 'Em Espécie' : acc.type === 'checking' ? 'Corrente' : acc.type}
+                  <p className="text-sm text-slate-400 font-medium truncate">{acc.bankName}</p>
+                  
+                  <div className="mt-3">
+                    <p className={`text-base font-black tracking-tight ${balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    {acc.type === 'credit_card' ? 'Cartão de Crédito' : acc.type === 'cash' ? 'Em Espécie' : acc.type === 'checking' ? 'Corrente' : acc.type === 'savings' ? 'Poupança' : acc.type === 'investment' ? 'Investimento' : acc.type}
                   </span>
                 </div>
               </div>
-              <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-4 right-4 flex gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => openModal(acc)} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-emerald-600 rounded-xl transition-all" title="Editar">
                   <i className="fas fa-pen text-sm"></i>
                 </button>
@@ -112,7 +123,7 @@ const AccountsManager: React.FC = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <h3 className="text-xl font-bold text-slate-800">{editingAccount ? 'Editar Conta' : 'Nova Conta'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -149,7 +160,7 @@ const AccountsManager: React.FC = () => {
                   value={formData.type} 
                   disabled={editingAccount?.name === 'Dinheiro'}
                   onChange={(e) => setFormData({...formData, type: e.target.value as any})} 
-                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-black font-bold transition-all ${editingAccount?.name === 'Dinheiro' ? 'opacity-70' : ''}`}
+                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-black font-bold transition-all ${editingAccount?.name === 'Dinheiro' ? 'opacity-70' : 'focus:ring-2 focus:ring-emerald-500'}`}
                 >
                   <option value="checking">Conta Corrente</option>
                   <option value="savings">Poupança</option>
