@@ -16,6 +16,10 @@ const GoalsManager: React.FC = () => {
   const [contributionError, setContributionError] = useState('');
   const [createGoalError, setCreateGoalError] = useState('');
   
+  // Novo: Controle de opções do botão de aporte
+  const [showContributionOptions, setShowContributionOptions] = useState(false);
+  const [contributionMode, setContributionMode] = useState<'in' | 'out'>('in');
+
   const [formData, setFormData] = useState({
     name: '',
     targetAmount: '',
@@ -74,7 +78,7 @@ const GoalsManager: React.FC = () => {
     setFormData({ 
       name: goal.name, 
       targetAmount: goal.targetAmount.toString(), 
-      initialAmount: '', // Não editamos valor inicial em metas existentes por aqui
+      initialAmount: '', 
       debitFromAccount: false,
       accountId: '',
       icon: goal.icon, 
@@ -92,7 +96,6 @@ const GoalsManager: React.FC = () => {
     const initial = parseFloat(formData.initialAmount) || 0;
     if (target <= 0) return;
 
-    // Validação de saldo para aporte inicial
     if (!editingGoal && formData.debitFromAccount && initial > 0) {
       if (!formData.accountId) {
         setCreateGoalError('Selecione uma conta para o débito inicial.');
@@ -109,7 +112,6 @@ const GoalsManager: React.FC = () => {
     const goalId = editingGoal ? editingGoal.id : crypto.randomUUID();
     let currentAmount = editingGoal ? editingGoal.currentAmount : initial;
 
-    // Se for uma nova meta e o usuário quiser debitar de uma conta
     if (!editingGoal && formData.debitFromAccount && initial > 0 && formData.accountId) {
       const initialTransaction: Transaction = {
         id: crypto.randomUUID(),
@@ -145,26 +147,33 @@ const GoalsManager: React.FC = () => {
     
     if (!checkInternet() || !user) return;
 
-    const amount = parseFloat(contributionData.amount) || 0;
+    const amount = Math.abs(parseFloat(contributionData.amount) || 0);
     const goal = goals.find(g => g.id === (editingContribution ? contributionData.goalId : contributionData.goalId)) || selectedGoalForHistory;
     
     if (!goal) return;
 
     if (editingContribution) {
-      const oldAmount = Math.abs(editingContribution.amount);
-      const diff = amount - oldAmount;
+      // Lógica de edição permanece baseada no sinal original da transação
+      const oldAmountAbs = Math.abs(editingContribution.amount);
+      const isOriginallyExpense = editingContribution.amount < 0;
+      
+      // Se era despesa (entrada na meta), diff aumenta meta. Se era receita (retirada), diff diminui meta.
+      const diff = amount - oldAmountAbs;
+      const finalAmount = isOriginallyExpense ? -amount : amount;
 
       const updatedTransaction: Transaction = {
         ...editingContribution,
-        amount: -Math.abs(amount),
+        amount: finalAmount,
         accountId: contributionData.accountId
       };
 
       await saveTransaction(updatedTransaction);
 
+      // Atualiza saldo da meta
+      const goalDiff = isOriginallyExpense ? diff : -diff;
       const updatedGoal: Goal = {
         ...goal,
-        currentAmount: Math.max(0, goal.currentAmount + diff)
+        currentAmount: Math.max(0, goal.currentAmount + goalDiff)
       };
       await saveGoal(updatedGoal);
 
@@ -174,32 +183,62 @@ const GoalsManager: React.FC = () => {
     } else {
       if (!contributionData.goalId || !contributionData.accountId) return;
       const account = bankAccounts.find(a => a.id === contributionData.accountId);
-      const balance = accountBalances[contributionData.accountId] || 0;
+      
+      if (contributionMode === 'in') {
+        // Lógica de ENTRADA (Aporte)
+        const balance = accountBalances[contributionData.accountId] || 0;
+        if (account && account.type !== 'credit_card' && amount > balance) {
+          setContributionError('Saldo insuficiente');
+          return;
+        }
 
-      if (account && account.type !== 'credit_card' && amount > balance) {
-        setContributionError('Saldo insuficiente');
-        return;
-      }
+        if (amount > 0) {
+          const newTransaction: Transaction = {
+            id: crypto.randomUUID(),
+            userId: user.uid,
+            description: `Aporte Meta: ${goal.name}`,
+            amount: -amount,
+            type: 'expense',
+            category: 'Metas',
+            date: new Date().toISOString().split('T')[0],
+            accountId: contributionData.accountId
+          };
 
-      if (amount > 0) {
-        const newTransaction: Transaction = {
-          id: crypto.randomUUID(),
-          userId: user.uid,
-          description: `Aporte Meta: ${goal.name}`,
-          amount: -Math.abs(amount),
-          type: 'expense',
-          category: 'Metas',
-          date: new Date().toISOString().split('T')[0],
-          accountId: contributionData.accountId
-        };
+          await saveTransaction(newTransaction);
 
-        await saveTransaction(newTransaction);
+          const updatedGoal: Goal = {
+            ...goal,
+            currentAmount: goal.currentAmount + amount
+          };
+          await saveGoal(updatedGoal);
+        }
+      } else {
+        // Lógica de RETIRADA
+        if (amount > goal.currentAmount) {
+          setContributionError('Valor maior que o disponível na meta');
+          return;
+        }
 
-        const updatedGoal: Goal = {
-          ...goal,
-          currentAmount: goal.currentAmount + amount
-        };
-        await saveGoal(updatedGoal);
+        if (amount > 0) {
+          const newTransaction: Transaction = {
+            id: crypto.randomUUID(),
+            userId: user.uid,
+            description: `Retirada Meta: ${goal.name}`,
+            amount: amount,
+            type: 'income',
+            category: 'Metas',
+            date: new Date().toISOString().split('T')[0],
+            accountId: contributionData.accountId
+          };
+
+          await saveTransaction(newTransaction);
+
+          const updatedGoal: Goal = {
+            ...goal,
+            currentAmount: Math.max(0, goal.currentAmount - amount)
+          };
+          await saveGoal(updatedGoal);
+        }
       }
     }
 
@@ -219,14 +258,18 @@ const GoalsManager: React.FC = () => {
       return;
     }
 
-    const amountToRemove = Math.abs(t.amount);
+    const amountAbs = Math.abs(t.amount);
+    const isExpense = t.amount < 0;
     
     try {
       await deleteTransactionFromDb(t.id);
 
+      // Se era despesa (entrada na meta), remover subtrai. Se era receita (retirada), remover soma.
+      const goalAdjustment = isExpense ? -amountAbs : amountAbs;
+
       const updatedGoal: Goal = {
         ...currentGoal,
-        currentAmount: Math.max(0, currentGoal.currentAmount - amountToRemove)
+        currentAmount: Math.max(0, currentGoal.currentAmount + goalAdjustment)
       };
       
       await saveGoal(updatedGoal);
@@ -249,6 +292,7 @@ const GoalsManager: React.FC = () => {
 
   const openEditContributionModal = (t: Transaction) => {
     setEditingContribution(t);
+    setContributionMode(t.amount < 0 ? 'in' : 'out');
     setContributionData({
       goalId: selectedGoalForHistory?.id || '',
       accountId: t.accountId,
@@ -271,7 +315,7 @@ const GoalsManager: React.FC = () => {
     return transactions.filter(t => 
       t.userId === user?.uid && 
       t.category === 'Metas' && 
-      (t.description.includes(`Meta: ${selectedGoalForHistory.name}`) || t.description.includes(`Aporte Meta: ${selectedGoalForHistory.name}`))
+      (t.description.includes(`Meta: ${selectedGoalForHistory.name}`))
     ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [transactions, selectedGoalForHistory, user]);
 
@@ -316,7 +360,7 @@ const GoalsManager: React.FC = () => {
                   <button 
                     onClick={() => openHistoryModal(goal)}
                     className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-sky-600 transition-colors"
-                    title="Histórico de aportes"
+                    title="Histórico de movimentações"
                   >
                     <i className="fas fa-history text-xs"></i>
                   </button>
@@ -379,17 +423,46 @@ const GoalsManager: React.FC = () => {
       </div>
 
       {goals.length > 0 && (
-        <button 
-          onClick={() => {
-            setContributionError('');
-            setEditingContribution(null);
-            setContributionData({ goalId: '', accountId: '', amount: '' });
-            setIsContributionModalOpen(true);
-          }}
-          className="fixed bottom-24 right-6 bg-violet-600 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-110 active:scale-90 transition-all border-4 border-white"
-        >
-          <i className="fas fa-coins text-2xl"></i>
-        </button>
+        <div className="fixed bottom-24 right-6 z-30 flex flex-col items-end gap-3">
+          {showContributionOptions && (
+            <div className="flex flex-col gap-2 mb-2 animate-in slide-in-from-bottom-4 duration-300">
+              <button 
+                onClick={() => {
+                  setContributionError('');
+                  setEditingContribution(null);
+                  setContributionMode('in');
+                  setContributionData({ goalId: '', accountId: '', amount: '' });
+                  setIsContributionModalOpen(true);
+                  setShowContributionOptions(false);
+                }}
+                className="bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+              >
+                <i className="fas fa-arrow-up"></i>
+                Nova Entrada
+              </button>
+              <button 
+                onClick={() => {
+                  setContributionError('');
+                  setEditingContribution(null);
+                  setContributionMode('out');
+                  setContributionData({ goalId: '', accountId: '', amount: '' });
+                  setIsContributionModalOpen(true);
+                  setShowContributionOptions(false);
+                }}
+                className="bg-rose-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+              >
+                <i className="fas fa-arrow-down"></i>
+                Retirada
+              </button>
+            </div>
+          )}
+          <button 
+            onClick={() => setShowContributionOptions(!showContributionOptions)}
+            className={`bg-violet-600 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all border-4 border-white ${showContributionOptions ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
+          >
+            <i className={`fas ${showContributionOptions ? 'fa-times' : 'fa-coins'} text-2xl`}></i>
+          </button>
+        </div>
       )}
 
       {isModalOpen && (
@@ -470,7 +543,6 @@ const GoalsManager: React.FC = () => {
                             );
                           })}
                         </select>
-                        <p className="text-[9px] text-slate-400 mt-2 italic px-1">Isso criará um lançamento de despesa e impactará seus relatórios.</p>
                       </div>
                     )}
                   </div>
@@ -522,16 +594,18 @@ const GoalsManager: React.FC = () => {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200">
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner">
-                <i className="fas fa-coins"></i>
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner ${contributionMode === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                <i className={`fas ${contributionMode === 'in' ? 'fa-coins' : 'fa-hand-holding-dollar'}`}></i>
               </div>
-              <h3 className="text-xl font-bold text-slate-800">{editingContribution ? 'Editar Aporte' : 'Novo Aporte'}</h3>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Este valor sairá da sua conta</p>
+              <h3 className="text-xl font-bold text-slate-800">{editingContribution ? (contributionMode === 'in' ? 'Editar Entrada' : 'Editar Retirada') : (contributionMode === 'in' ? 'Nova Entrada' : 'Retirada')}</h3>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                {contributionMode === 'in' ? 'Este valor sairá da sua conta' : 'Este valor retornará para sua conta'}
+              </p>
             </div>
 
             <form onSubmit={handleAddContribution} className="space-y-6">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Meta Destino</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Meta</label>
                 <select 
                   required 
                   disabled={!!editingContribution}
@@ -541,7 +615,7 @@ const GoalsManager: React.FC = () => {
                 >
                   <option value="">Escolha uma meta</option>
                   {goals.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
+                    <option key={g.id} value={g.id}>{g.name} (R$ {g.currentAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</option>
                   ))}
                   {!editingContribution && selectedGoalForHistory && !goals.find(g => g.id === contributionData.goalId) && (
                      <option value={selectedGoalForHistory.id}>{selectedGoalForHistory.name}</option>
@@ -550,7 +624,9 @@ const GoalsManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Conta de Origem</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                  {contributionMode === 'in' ? 'Conta de Origem' : 'Conta de Destino'}
+                </label>
                 <select 
                   required 
                   value={contributionData.accountId} 
@@ -563,13 +639,10 @@ const GoalsManager: React.FC = () => {
                   <option value="">Escolha a conta</option>
                   {bankAccounts.filter(acc => acc.type !== 'credit_card').map(acc => {
                     const balance = accountBalances[acc.id] || 0;
-                    const isDisabled = balance <= 0 && (!editingContribution || acc.id !== editingContribution.accountId);
                     return (
                       <option 
                         key={acc.id} 
                         value={acc.id} 
-                        disabled={isDisabled}
-                        className={isDisabled ? 'text-slate-300' : ''}
                       >
                         {acc.name} ({acc.bankName}) - R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </option>
@@ -579,7 +652,7 @@ const GoalsManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Valor do Aporte</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Valor (R$)</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">R$</span>
                   <input 
@@ -605,8 +678,8 @@ const GoalsManager: React.FC = () => {
               )}
 
               <div className="flex flex-col gap-3">
-                <button type="submit" className="w-full py-4 bg-violet-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-violet-100 active:scale-95 transition-all">
-                  {editingContribution ? 'Salvar Edição' : 'Confirmar e Pagar'}
+                <button type="submit" className={`w-full py-4 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all ${contributionMode === 'in' ? 'bg-emerald-600 shadow-emerald-100' : 'bg-rose-600 shadow-rose-100'}`}>
+                  {editingContribution ? 'Salvar Alterações' : (contributionMode === 'in' ? 'Confirmar Entrada' : 'Confirmar Retirada')}
                 </button>
                 {editingContribution && (
                   <button 
@@ -614,7 +687,7 @@ const GoalsManager: React.FC = () => {
                     onClick={() => setContributionToDelete(editingContribution)}
                     className="w-full py-3 bg-rose-50 text-rose-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-rose-100 hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
-                    <i className="fas fa-trash-alt"></i> Excluir Aporte
+                    <i className="fas fa-trash-alt"></i> Excluir Lançamento
                   </button>
                 )}
                 <button type="button" onClick={() => { setIsContributionModalOpen(false); setEditingContribution(null); }} className="w-full py-2 text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-slate-600">Cancelar</button>
@@ -630,7 +703,7 @@ const GoalsManager: React.FC = () => {
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Histórico: {selectedGoalForHistory.name}</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Aportes realizados</p>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Movimentações realizadas</p>
               </div>
               <button onClick={() => setIsHistoryModalOpen(false)} className="text-slate-300 hover:text-slate-600 transition-colors">
                 <i className="fas fa-times text-xl"></i>
@@ -641,6 +714,7 @@ const GoalsManager: React.FC = () => {
               {goalHistory.length > 0 ? (
                 goalHistory.map(t => {
                   const acc = bankAccounts.find(a => a.id === t.accountId);
+                  const isRetirada = t.amount > 0;
                   return (
                     <div key={t.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group">
                       <div className="flex-1 min-w-0">
@@ -648,11 +722,16 @@ const GoalsManager: React.FC = () => {
                           <span className="text-[10px] font-black text-slate-400 font-mono">
                             {new Date(t.date).toLocaleDateString('pt-BR')}
                           </span>
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${isRetirada ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                            {isRetirada ? 'Retirada' : 'Entrada'}
+                          </span>
                           <span className="text-[10px] font-black px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-500 uppercase">
                             {acc?.name || 'S/ Conta'}
                           </span>
                         </div>
-                        <p className="text-sm font-black text-slate-800">R$ {Math.abs(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className={`text-sm font-black ${isRetirada ? 'text-rose-600' : 'text-slate-800'}`}>
+                          {isRetirada ? '-' : '+'} R$ {Math.abs(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
                       </div>
                       
                       <div className="flex gap-2">
@@ -675,7 +754,7 @@ const GoalsManager: React.FC = () => {
               ) : (
                 <div className="py-12 text-center text-slate-300">
                   <i className="fas fa-receipt text-4xl opacity-10 mb-2"></i>
-                  <p className="text-xs font-bold uppercase tracking-widest">Nenhum aporte registrado</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">Nenhuma movimentação registrada</p>
                 </div>
               )}
             </div>
@@ -696,7 +775,7 @@ const GoalsManager: React.FC = () => {
             <div className="space-y-2">
               <h3 className="text-xl font-black text-slate-800 tracking-tight">Excluir Meta?</h3>
               <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                Deseja excluir esta meta permanentemente? Os aportes já realizados permanecerão no seu extrato como despesas.
+                Deseja excluir esta meta permanentemente? Os lançamentos já realizados permanecerão no seu extrato.
               </p>
             </div>
             <div className="flex flex-col gap-3">
@@ -726,7 +805,7 @@ const GoalsManager: React.FC = () => {
             <div className="space-y-2">
               <h3 className="text-xl font-black text-slate-800 tracking-tight">Excluir Lançamento?</h3>
               <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                Deseja excluir este aporte? O valor (R$ {Math.abs(contributionToDelete.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) será removido do progresso da meta e o saldo retornará para sua conta bancária.
+                Deseja excluir este lançamento? O valor (R$ {Math.abs(contributionToDelete.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) será removido do histórico da meta e o saldo será ajustado na conta vinculada.
               </p>
             </div>
             <div className="flex flex-col gap-3">
