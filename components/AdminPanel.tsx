@@ -204,7 +204,7 @@ const AdminPanel: React.FC = () => {
 
       <div className="mb-6 relative">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-300"><i className="fas fa-search"></i></div>
-        <input type="text" placeholder="Pesquisar membros..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm focus:ring-2 focus:ring-violet-500 outline-none text-sm font-medium"/>
+        <input type="text" placeholder="Pesquisar membros..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm focus:ring-2 focus:ring-violet-500 outline-none text-sm font-medium text-black"/>
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
@@ -286,7 +286,7 @@ const AdminPanel: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nome Completo</label>
-                    <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm"/>
+                    <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm bg-white text-black font-bold"/>
                   </div>
                   
                   <div className="col-span-2">
@@ -297,7 +297,7 @@ const AdminPanel: React.FC = () => {
                       disabled={!!editingUser}
                       value={formData.username} 
                       onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} 
-                      className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm ${editingUser ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm bg-white text-black font-bold ${editingUser ? 'opacity-50 cursor-not-allowed' : ''}`}
                       placeholder="ex: joao.silva"
                     />
                     {showDuplicateError && <p className="text-[10px] text-rose-500 font-bold mt-1">Este nome de usuário já está em uso.</p>}
@@ -305,7 +305,7 @@ const AdminPanel: React.FC = () => {
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Perfil</label>
-                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold">
+                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold bg-white text-black">
                       <option value="user">Platinum</option>
                       <option value="admin">Administrador</option>
                     </select>
@@ -325,7 +325,7 @@ const AdminPanel: React.FC = () => {
                 {formData.role !== 'admin' && accessType === 'temporary' && (
                   <div className="animate-in slide-in-from-top-2">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Expiração do Acesso</label>
-                    <input type="date" required value={formData.suspensionDate} onChange={(e) => setFormData({...formData, suspensionDate: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold"/>
+                    <input type="date" required value={formData.suspensionDate} onChange={(e) => setFormData({...formData, suspensionDate: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold bg-white text-black"/>
                   </div>
                 )}
 
@@ -360,7 +360,7 @@ const AdminPanel: React.FC = () => {
             <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Conceder Acesso Admin</h3>
             <p className="text-sm text-slate-500 font-medium leading-relaxed">Você está prestes a tornar este usuário um administrador. Digite sua senha para confirmar.</p>
             <div className="space-y-4">
-              <input type="password" placeholder="Sua senha Admin" value={adminPasswordConfirm} onChange={(e) => setAdminPasswordConfirm(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold outline-none focus:ring-2 focus:ring-violet-500"/>
+              <input type="password" placeholder="Sua senha Admin" value={adminPasswordConfirm} onChange={(e) => setAdminPasswordConfirm(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold outline-none focus:ring-2 focus:ring-violet-500 bg-white text-black"/>
               {securityError && <p className="text-[10px] text-rose-600 font-black uppercase">{securityError}</p>}
             </div>
             <div className="flex flex-col gap-3">
@@ -378,7 +378,7 @@ const AdminPanel: React.FC = () => {
             <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Apagar Conta Permanentemente</h3>
             <p className="text-sm text-slate-500 font-medium leading-relaxed">Esta ação removerá todos os dados do membro. Digite sua senha de Admin para confirmar.</p>
             <div className="space-y-4">
-              <input type="password" placeholder="Sua senha Admin" value={adminPasswordConfirm} onChange={(e) => setAdminPasswordConfirm(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold outline-none focus:ring-2 focus:ring-rose-500"/>
+              <input type="password" placeholder="Sua senha Admin" value={adminPasswordConfirm} onChange={(e) => setAdminPasswordConfirm(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold outline-none focus:ring-2 focus:ring-rose-500 bg-white text-black"/>
               {securityError && <p className="text-[10px] text-rose-600 font-black uppercase">{securityError}</p>}
             </div>
             <div className="flex flex-col gap-3">

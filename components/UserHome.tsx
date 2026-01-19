@@ -115,7 +115,22 @@ const UserHome: React.FC = () => {
       .filter(t => t.type === 'expense' || t.type === 'credit_card')
       .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
 
-    // Gastos por categorias
+    const cashExpenses = userTransactions
+      .filter(t => (t.type === 'expense' || t.type === 'credit_card'))
+      .filter(t => {
+        const acc = bankAccounts.find(a => a.id === t.accountId);
+        return acc?.type === 'cash';
+      })
+      .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
+
+    const digitalExpenses = userTransactions
+      .filter(t => (t.type === 'expense' || t.type === 'credit_card'))
+      .filter(t => {
+        const acc = bankAccounts.find(a => a.id === t.accountId);
+        return acc?.type === 'checking' || acc?.type === 'savings' || acc?.type === 'investment';
+      })
+      .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
+
     const categoryMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const val = Math.abs(t.amount);
@@ -127,31 +142,30 @@ const UserHome: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    // Gastos Contas Digitais (Checking, Savings, Investment)
-    const digitalMap: Record<string, number> = {};
+    const cashCategoryMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
+      const acc = bankAccounts.find(a => a.id === t.accountId);
+      if (acc?.type === 'cash') {
+        const val = Math.abs(t.amount);
+        cashCategoryMap[t.category] = (cashCategoryMap[t.category] || 0) + val;
+      }
+    });
+    const cashCategoryBreakdown = Object.entries(cashCategoryMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    const digitalAccountMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const acc = bankAccounts.find(a => a.id === t.accountId);
       if (acc && (acc.type === 'checking' || acc.type === 'savings' || acc.type === 'investment')) {
-        digitalMap[acc.name] = (digitalMap[acc.name] || 0) + Math.abs(t.amount);
+        const val = Math.abs(t.amount);
+        digitalAccountMap[acc.name] = (digitalAccountMap[acc.name] || 0) + val;
       }
     });
-    const digitalBreakdown = Object.entries(digitalMap)
+    const digitalAccountBreakdown = Object.entries(digitalAccountMap)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    // Gastos Dinheiro (Cash)
-    const cashMap: Record<string, number> = {};
-    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
-      const acc = bankAccounts.find(a => a.id === t.accountId);
-      if (acc && acc.type === 'cash') {
-        cashMap[acc.name] = (cashMap[acc.name] || 0) + Math.abs(t.amount);
-      }
-    });
-    const cashBreakdown = Object.entries(cashMap)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
-    // Gastos Cartão (Credit Card)
     const cardMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const acc = bankAccounts.find(a => a.id === t.accountId);
@@ -163,7 +177,10 @@ const UserHome: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    return { totalBalance, totalIncome, totalExpense, categoryBreakdown, digitalBreakdown, cashBreakdown, cardBreakdown };
+    return { 
+      totalBalance, totalIncome, totalExpense, cashExpenses, digitalExpenses, 
+      categoryBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
+    };
   }, [transactions, user, bankAccounts, currentMonth, currentYear]);
 
   return (
@@ -174,13 +191,13 @@ const UserHome: React.FC = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm active:scale-95"
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-violet-50 hover:text-violet-600 transition-all shadow-sm active:scale-95"
             >
               <i className="fas fa-bars-staggered"></i>
             </button>
             <div>
-              <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Visão Geral</h2>
-              <p className="text-slate-500 text-[10px] md:text-xs uppercase tracking-widest font-bold">Fluxo de Caixa</p>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Finanças</h2>
+              <p className="text-slate-500 text-[10px] md:text-xs uppercase tracking-widest font-bold">Gestão Infinity</p>
             </div>
           </div>
           
@@ -215,74 +232,94 @@ const UserHome: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-violet-50/50 p-8 rounded-[2.5rem] border border-violet-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md">
-          <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-125 transition-transform duration-700 text-violet-300">
-            <i className="fas fa-wallet text-6xl"></i>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="bg-violet-600 p-6 rounded-[2rem] relative overflow-hidden group shadow-xl shadow-violet-100 transition-all hover:-translate-y-1">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-125 transition-transform duration-700 text-white">
+            <i className="fas fa-wallet text-4xl"></i>
           </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 mb-2">Liquidez Imediata</p>
-          <h3 className="text-3xl font-black tracking-tighter mb-6 flex items-baseline gap-2 text-slate-800">
-            <span className="text-violet-600 text-lg">R$</span>
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-violet-200 mb-1">Liquidez Total</p>
+          <h3 className="text-xl font-black tracking-tighter text-white flex items-baseline gap-1">
+            <span className="text-violet-300 text-sm font-bold">R$</span>
             {stats.totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </h3>
-          <div className="pt-4 border-t border-violet-100">
-             <span className="text-[9px] font-bold text-violet-400 uppercase flex items-center gap-2">
-                <i className="fas fa-circle-info text-violet-500"></i>
-                Dinheiro + Conta Corrente
-             </span>
+        </div>
+
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Entradas</p>
+            <h3 className="text-lg font-black text-emerald-500 tracking-tight">
+              + R$ {stats.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+             <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center"><i className="fas fa-arrow-trend-up text-[10px]"></i></div>
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Mês</span>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm group">
-          <div className="flex items-center justify-between mb-6">
-            <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center shadow-inner">
-               <i className="fas fa-arrow-trend-up"></i>
-            </div>
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{months[currentMonth].substring(0, 3)}</span>
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Saídas Totais</p>
+            <h3 className="text-lg font-black text-rose-500 tracking-tight">
+              - R$ {stats.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </h3>
           </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Entradas no Mês</p>
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight">
-            R$ {stats.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </h3>
+          <div className="mt-3 flex items-center gap-2">
+             <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center"><i className="fas fa-arrow-trend-down text-[10px]"></i></div>
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Mês</span>
+          </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm group">
-          <div className="flex items-center justify-between mb-6">
-            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center shadow-inner">
-               <i className="fas fa-arrow-trend-down"></i>
-            </div>
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{months[currentMonth].substring(0, 3)}</span>
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Gastos Dinheiro</p>
+            <h3 className="text-lg font-black text-amber-500 tracking-tight">
+              - R$ {stats.cashExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </h3>
           </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Saídas no Mês</p>
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight">
-            R$ {stats.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </h3>
+          <div className="mt-3 flex items-center gap-2">
+             <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center"><i className="fas fa-wallet text-[10px]"></i></div>
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Cash</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Conta Digital</p>
+            <h3 className="text-lg font-black text-sky-500 tracking-tight">
+              - R$ {stats.digitalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+             <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center"><i className="fas fa-university text-[10px]"></i></div>
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Digital</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <DashboardWidget 
           title={`Gastos por categorias (${months[currentMonth]})`} 
           data={stats.categoryBreakdown} 
-          emptyMessage={`Sem gastos registrados em ${months[currentMonth]}.`}
+          emptyMessage={`Sem gastos registrados.`}
           icon="fa-chart-pie"
         />
         <DashboardWidget 
-          title={`Gastos Contas Digitais (${months[currentMonth]})`} 
-          data={stats.digitalBreakdown} 
-          emptyMessage={`Sem gastos digitais em ${months[currentMonth]}.`}
-          icon="fa-building-columns"
+          title={`Gastos Dinheiro (${months[currentMonth]})`} 
+          data={stats.cashCategoryBreakdown} 
+          emptyMessage={`Sem gastos em dinheiro.`}
+          icon="fa-wallet"
         />
         <DashboardWidget 
-          title={`Gastos Dinheiro (${months[currentMonth]})`} 
-          data={stats.cashBreakdown} 
-          emptyMessage={`Sem gastos em dinheiro em ${months[currentMonth]}.`}
-          icon="fa-wallet"
+          title={`Gastos Conta Digital (${months[currentMonth]})`} 
+          data={stats.digitalAccountBreakdown} 
+          emptyMessage={`Sem gastos digitais.`}
+          icon="fa-university"
         />
         <DashboardWidget 
           title={`Gastos Cartão (${months[currentMonth]})`} 
           data={stats.cardBreakdown} 
-          emptyMessage={`Sem gastos no cartão em ${months[currentMonth]}.`}
+          emptyMessage={`Sem gastos no cartão.`}
           icon="fa-credit-card"
         />
       </div>

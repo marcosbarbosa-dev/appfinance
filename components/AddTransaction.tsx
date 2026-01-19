@@ -196,13 +196,13 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
                 <label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Valor do Lançamento</label>
                 <div className="relative">
                   <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold ${editTransaction ? 'text-xs' : 'text-base'}`}>R$</span>
-                  <input type="number" step="0.01" required value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0,00" className={`w-full pl-10 pr-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-black text-slate-800 ${editTransaction ? 'py-2.5 text-base' : 'py-3.5 text-xl'}`}/>
+                  <input type="number" step="0.01" required value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0,00" className={`w-full pl-10 pr-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-black bg-white text-black ${editTransaction ? 'py-2.5 text-base' : 'py-3.5 text-xl'}`}/>
                 </div>
               </div>
 
               <div>
                 <label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Conta Relacionada</label>
-                <select required value={formData.accountId} onChange={(e) => setFormData({...formData, accountId: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-slate-700 bg-white ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}>
+                <select required value={formData.accountId} onChange={(e) => setFormData({...formData, accountId: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}>
                   {filteredAccounts.length > 0 ? filteredAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} ({acc.bankName})</option>) : <option value="">Nenhuma conta disponível</option>}
                 </select>
               </div>
@@ -210,7 +210,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
 
             <div>
               <label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Descrição <span className="text-slate-400 font-normal">(Opcional)</span></label>
-              <input type="text" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Ex: Assinatura Personalle" className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-slate-700 ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}/>
+              <input type="text" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Ex: Assinatura Personalle" className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}/>
             </div>
 
             {formData.type === 'credit_card' && !editTransaction && (
@@ -232,7 +232,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
                           min="1" 
                           value={formData.currentInstallment} 
                           onChange={(e) => setFormData(prev => ({ ...prev, currentInstallment: e.target.value }))} 
-                          className={`w-full bg-white border rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none transition-all ${isInstallmentInvalid && formData.currentInstallment !== '' ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-purple-400'}`}
+                          className={`w-full bg-white text-black border rounded-lg px-3 py-2 text-sm font-bold outline-none transition-all ${isInstallmentInvalid && formData.currentInstallment !== '' ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-purple-400'}`}
                         />
                       </div>
                       <div className="pt-4 text-slate-300 font-bold flex flex-col items-center">
@@ -246,7 +246,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
                           min="1" 
                           value={formData.totalInstallments} 
                           onChange={(e) => setFormData(prev => ({ ...prev, totalInstallments: e.target.value }))} 
-                          className={`w-full bg-white border rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none transition-all ${isInstallmentInvalid && formData.totalInstallments !== '' ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-purple-400'}`}
+                          className={`w-full bg-white text-black border rounded-lg px-3 py-2 text-sm font-bold outline-none transition-all ${isInstallmentInvalid && formData.totalInstallments !== '' ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-purple-400'}`}
                         />
                       </div>
                     </div>
@@ -261,8 +261,8 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
             )}
 
             <div className={`grid grid-cols-1 ${editTransaction ? '' : 'sm:grid-cols-2'} gap-4`}>
-              <div><label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Categoria</label><select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-slate-700 bg-white ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}>{filteredCategories.length > 0 ? filteredCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>) : <option value="">Nenhuma categoria</option>}</select></div>
-              <div><label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Data {formData.isInstallment ? 'da 1ª Parcela' : ''}</label><input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-slate-700 bg-white ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}/></div>
+              <div><label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Categoria</label><select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}>{filteredCategories.length > 0 ? filteredCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>) : <option value="">Nenhuma categoria</option>}</select></div>
+              <div><label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Data {formData.isInstallment ? 'da 1ª Parcela' : ''}</label><input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}/></div>
             </div>
           </div>
 

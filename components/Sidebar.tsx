@@ -36,7 +36,7 @@ const LogoInfinity = ({ className = "w-6 h-6" }: { className?: string }) => (
 );
 
 const Sidebar: React.FC = () => {
-  const { user, logout, activeView, setActiveView, viewMode, setViewMode, isSidebarOpen, setIsSidebarOpen, isOnline } = useAuth();
+  const { user, logout, activeView, setActiveView, viewMode, setViewMode, isSidebarOpen, setIsSidebarOpen, isOnline, sidebarTitle, logoData } = useAuth();
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -55,6 +55,7 @@ const Sidebar: React.FC = () => {
     { id: 'meus_dados', label: 'Meus Dados', icon: 'fas fa-user-cog' },
     { id: 'suporte', label: 'Suporte', icon: 'fas fa-headset' },
     { id: 'avisos', label: 'Avisos', icon: 'fas fa-bullhorn' },
+    { id: 'config', label: 'Config', icon: 'fas fa-cog' },
   ] : [
     { id: 'inicio', label: 'Início', icon: 'fas fa-home' },
     { id: 'relatorio', label: 'Relatório', icon: 'fas fa-file-invoice-dollar' },
@@ -88,10 +89,16 @@ const Sidebar: React.FC = () => {
       <aside className={`fixed top-0 left-0 bottom-0 w-64 bg-slate-950 text-slate-300 flex flex-col h-screen shadow-2xl z-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center justify-between border-b border-slate-900/50">
           <div className="flex items-center gap-3">
-            <div className="bg-violet-600 p-2 rounded-xl text-white">
-              <LogoInfinity className="w-6 h-6" />
+            <div className="bg-violet-600 p-2 rounded-xl text-white overflow-hidden flex items-center justify-center w-10 h-10">
+              {logoData ? (
+                <img src={logoData} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <LogoInfinity className="w-6 h-6" />
+              )}
             </div>
-            <span className="text-sm font-light text-white tracking-[0.2em] uppercase whitespace-nowrap">Personalle</span>
+            <span className="text-sm font-light text-white tracking-[0.2em] uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
+              {sidebarTitle || "Personalle"}
+            </span>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="text-slate-500 hover:text-white">
             <i className="fas fa-times text-xl"></i>
@@ -108,20 +115,29 @@ const Sidebar: React.FC = () => {
           <div className="text-center mt-2 w-full px-4">
             <p className="text-white font-black truncate max-w-[180px] mx-auto">{user?.name}</p>
             
-            <div className="mt-1 relative flex justify-center">
+            <div className="mt-2 relative flex justify-center">
               {user?.role === 'admin' ? (
-                <div className="relative inline-block w-full max-w-[120px]">
-                  <select 
-                    value={viewMode}
-                    onChange={(e) => handleToggleViewMode(e.target.value as 'admin' | 'user')}
-                    className="w-full appearance-none bg-slate-900 border border-slate-800 text-[7px] text-violet-400 font-black uppercase tracking-widest text-center py-1 px-4 rounded-lg outline-none focus:ring-1 focus:ring-violet-500/50 cursor-pointer"
+                <div className="flex p-0.5 bg-slate-900 rounded-lg border border-slate-800 w-full max-w-[130px] mx-auto shadow-inner">
+                  <button
+                    onClick={() => handleToggleViewMode('admin')}
+                    className={`flex-1 py-1 text-[8px] font-black uppercase rounded-md transition-all duration-300 ${
+                      viewMode === 'admin' 
+                      ? 'bg-violet-600 text-white shadow-sm scale-[1.02]' 
+                      : 'text-slate-500 hover:text-slate-400'
+                    }`}
                   >
-                    <option value="admin">Supervisor</option>
-                    <option value="user">Usuário</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-violet-400/50 text-[7px]">
-                    <i className="fas fa-chevron-down"></i>
-                  </div>
+                    admin
+                  </button>
+                  <button
+                    onClick={() => handleToggleViewMode('user')}
+                    className={`flex-1 py-1 text-[8px] font-black uppercase rounded-md transition-all duration-300 ${
+                      viewMode === 'user' 
+                      ? 'bg-violet-600 text-white shadow-sm scale-[1.02]' 
+                      : 'text-slate-500 hover:text-slate-400'
+                    }`}
+                  >
+                    user
+                  </button>
                 </div>
               ) : (
                 <p className="text-[10px] text-violet-400 uppercase tracking-widest font-black">

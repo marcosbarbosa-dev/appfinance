@@ -21,6 +21,7 @@ import UserProfile from './components/UserProfile';
 import SupportManager from './components/SupportManager';
 import ConnectivityModal from './components/ConnectivityModal';
 import UserSupportView from './components/UserSupportView';
+import ConfigManager from './components/ConfigManager';
 
 interface AuthContextType {
   user: User | null;
@@ -51,6 +52,16 @@ interface AuthContextType {
   setSupportInfo: (info: string) => Promise<void>;
   maintenanceMessage: string;
   setMaintenanceMessage: (info: string) => Promise<void>;
+  loginTitle: string;
+  setLoginTitle: (title: string) => Promise<void>;
+  sidebarTitle: string;
+  setSidebarTitle: (title: string) => Promise<void>;
+  logoutTitle: string;
+  setLogoutTitle: (title: string) => Promise<void>;
+  logoutMessage: string;
+  setLogoutMessageConfig: (msg: string) => Promise<void>;
+  logoData: string | null;
+  setLogoData: (data: string | null) => Promise<void>;
   isLoggingEnabled: boolean;
   setIsLoggingEnabled: (enabled: boolean) => Promise<void>;
   isSystemLocked: boolean;
@@ -93,20 +104,24 @@ const LogoInfinity = ({ className = "w-16 h-16" }: { className?: string }) => (
   </svg>
 );
 
-const LogoutLoading: React.FC<{ message?: string }> = ({ message = "Processando..." }) => (
+const LogoutLoading: React.FC<{ title: string; message: string; logoData?: string | null }> = ({ title, message, logoData }) => (
   <div className="fixed inset-0 z-[300] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center animate-in fade-in duration-500">
     <div className="text-center space-y-6">
       <div className="relative w-24 h-24 mx-auto">
         <div className="absolute inset-0 bg-violet-500/20 rounded-full animate-ping"></div>
-        <div className="relative w-full h-full bg-violet-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-violet-500/40">
-          <LogoInfinity className="w-12 h-12" />
+        <div className="relative w-full h-full bg-violet-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-violet-500/40 overflow-hidden">
+          {logoData ? (
+            <img src={logoData} alt="Logo" className="w-full h-full object-contain p-4" />
+          ) : (
+            <LogoInfinity className="w-12 h-12" />
+          )}
         </div>
       </div>
       <div className="space-y-2">
-        <h2 className="text-white text-xl font-black tracking-tight">Personalle</h2>
+        <h2 className="text-white text-xl font-black tracking-tight">{title}</h2>
         <div className="flex items-center justify-center gap-3 px-8">
           <i className="fas fa-circle-notch animate-spin text-violet-400 text-sm"></i>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">{message || "Saindo com segurança..."}</p>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">{message}</p>
         </div>
       </div>
     </div>
@@ -133,6 +148,11 @@ const App: React.FC = () => {
   const [acknowledgedNoticeIds, setAcknowledgedNoticeIds] = useState<string[] | null>(null);
   const [supportInfo, setSupportInfoState] = useState("");
   const [maintenanceMessage, setMaintenanceMessageState] = useState("");
+  const [loginTitle, setLoginTitleState] = useState("Personalle Infinity");
+  const [sidebarTitle, setSidebarTitleState] = useState("Personalle");
+  const [logoutTitle, setLogoutTitleState] = useState("Personalle");
+  const [logoutMessageConfig, setLogoutMessageConfigState] = useState("Saindo com segurança...");
+  const [logoData, setLogoDataState] = useState<string | null>(null);
   const [isLoggingEnabled, setIsLoggingEnabledState] = useState(true);
   const [isSystemLocked, setIsSystemLockedState] = useState(false);
   const [activeView, setActiveView] = useState('inicio');
@@ -149,7 +169,6 @@ const App: React.FC = () => {
     userRef.current = user;
     if (user) {
       localStorage.setItem('personalle_user', JSON.stringify(user));
-      // Só reseta a visão se for um NOVO login ou transição de sessão (uid mudou)
       if (lastUid.current !== user.uid) {
         setViewMode(user.role === 'admin' ? 'admin' : 'user');
         setActiveView(user.role === 'admin' ? 'dashboard' : 'inicio');
@@ -207,15 +226,8 @@ const App: React.FC = () => {
   const fetchGlobalConfig = useCallback(async () => {
     if (!navigator.onLine) return;
     try {
-      const { data: configData, error: configError } = await supabase.from('system_config').select('*').maybeSingle();
-      
-      if (configError) {
-        if (!configError.message.toLowerCase().includes('fetch')) {
-          console.error("Erro ao buscar configuração global:", configError.message);
-        }
-        return;
-      }
-
+      // Busca status do sistema (app_config)
+      const { data: configData, error: configError } = await supabase.from('app_config').select('*').eq('id', 'main').maybeSingle();
       if (configData) {
         setSupportInfoState(configData.supportInfo || "");
         setMaintenanceMessageState(configData.maintenanceMessage || "");
@@ -234,10 +246,18 @@ const App: React.FC = () => {
           return;
         }
       }
-    } catch (e: any) {
-      if (e?.name !== 'TypeError') {
-        console.error("Erro inesperado na configuração:", e?.message || e);
+
+      // Busca identidade visual (ui_config)
+      const { data: uiData } = await supabase.from('ui_config').select('*').eq('id', 'main').maybeSingle();
+      if (uiData) {
+        setLoginTitleState(uiData.loginTitle || "Personalle Infinity");
+        setSidebarTitleState(uiData.sidebarTitle || "Personalle");
+        setLogoutTitleState(uiData.logoutTitle || "Personalle");
+        setLogoutMessageConfigState(uiData.logoutMessage || "Saindo com segurança...");
+        setLogoDataState(uiData.logoData || null);
       }
+    } catch (e: any) {
+      console.error("Erro ao sincronizar configurações:", e?.message);
     }
   }, [logout]);
 
@@ -496,24 +516,54 @@ const App: React.FC = () => {
   };
 
   const setSupportInfo = async (info: string) => {
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', supportInfo: info });
+    if (error) throw error;
     setSupportInfoState(info);
-    await supabase.from('system_config').upsert({ id: 'main', supportInfo: info });
   };
   const setMaintenanceMessage = async (msg: string) => {
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', maintenanceMessage: msg });
+    if (error) throw error;
     setMaintenanceMessageState(msg);
-    await supabase.from('system_config').upsert({ id: 'main', maintenanceMessage: msg });
+  };
+  const setLoginTitle = async (title: string) => {
+    const { error } = await supabase.from('ui_config').upsert({ id: 'main', loginTitle: title });
+    if (error) throw error;
+    setLoginTitleState(title);
+  };
+  const setSidebarTitle = async (title: string) => {
+    const { error } = await supabase.from('ui_config').upsert({ id: 'main', sidebarTitle: title });
+    if (error) throw error;
+    setSidebarTitleState(title);
+  };
+  const setLogoutTitle = async (title: string) => {
+    const { error } = await supabase.from('ui_config').upsert({ id: 'main', logoutTitle: title });
+    if (error) throw error;
+    setLogoutTitleState(title);
+  };
+  const setLogoutMessageConfig = async (msg: string) => {
+    const { error } = await supabase.from('ui_config').upsert({ id: 'main', logoutMessage: msg });
+    if (error) throw error;
+    setLogoutMessageConfigState(msg);
+  };
+  const setLogoData = async (data: string | null) => {
+    const { error } = await supabase.from('ui_config').upsert({ id: 'main', logoData: data });
+    if (error) throw error;
+    setLogoDataState(data);
   };
   const setIsLoggingEnabled = async (enabled: boolean) => {
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', isLoggingEnabled: enabled });
+    if (error) throw error;
     setIsLoggingEnabledState(enabled);
-    await supabase.from('system_config').upsert({ id: 'main', isLoggingEnabled: enabled });
   };
   const setIsSystemLocked = async (locked: boolean) => {
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', isSystemLocked: locked });
+    if (error) throw error;
     setIsSystemLockedState(locked);
-    await supabase.from('system_config').upsert({ id: 'main', isSystemLocked: locked });
   };
   const triggerGlobalRefresh = async () => {
     const newRid = crypto.randomUUID();
-    await supabase.from('system_config').upsert({ id: 'main', globalRefreshId: newRid });
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', globalRefreshId: newRid });
+    if (error) throw error;
   };
 
   const renderActiveView = () => {
@@ -527,6 +577,7 @@ const App: React.FC = () => {
       case 'lancamentos': return <TransactionsList />;
       case 'transferencias': return <TransfersManager />;
       case 'avisos': return <NoticesManager />;
+      case 'config': return <ConfigManager />;
       case 'adicionar_transacao': return <AddTransaction />;
       case 'meus_dados': return <UserProfile />;
       case 'suporte_usuario': return <UserSupportView />;
@@ -536,7 +587,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (isLoggingOut) return <LogoutLoading message={logoutMessage} />;
+  if (isLoggingOut) return <LogoutLoading title={logoutTitle} message={logoutMessage || logoutMessageConfig} logoData={logoData} />;
 
   return (
     <AuthContext.Provider value={{ 
@@ -546,6 +597,9 @@ const App: React.FC = () => {
       bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
       logs, setLogs, notices, saveNotice, deleteNotice, acknowledgeNotice, acknowledgedNoticeIds,
       supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
+      loginTitle, setLoginTitle, sidebarTitle, setSidebarTitle, 
+      logoutTitle, setLogoutTitle, logoutMessage: logoutMessageConfig, setLogoutMessageConfig,
+      logoData, setLogoData,
       isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
       triggerGlobalRefresh,
       addLog, deleteLog, clearLogs, activeView, setActiveView, viewMode, setViewMode, isSidebarOpen, setIsSidebarOpen,

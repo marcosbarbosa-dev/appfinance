@@ -128,7 +128,7 @@ const AccountsManager: React.FC = () => {
                   readOnly={editingAccount?.name === 'Dinheiro'}
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 outline-none transition-all ${editingAccount?.name === 'Dinheiro' ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'focus:ring-2 focus:ring-emerald-500'}`} 
+                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 outline-none transition-all font-bold bg-white text-black ${editingAccount?.name === 'Dinheiro' ? 'opacity-50 cursor-not-allowed' : 'focus:ring-2 focus:ring-emerald-500'}`} 
                   placeholder="Ex: Conta Corrente"
                 />
               </div>
@@ -139,7 +139,7 @@ const AccountsManager: React.FC = () => {
                   required 
                   value={formData.bankName} 
                   onChange={(e) => setFormData({...formData, bankName: e.target.value})} 
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all" 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all bg-white text-black font-bold" 
                   placeholder="Ex: Nubank"
                 />
               </div>
@@ -149,7 +149,7 @@ const AccountsManager: React.FC = () => {
                   value={formData.type} 
                   disabled={editingAccount?.name === 'Dinheiro'}
                   onChange={(e) => setFormData({...formData, type: e.target.value as any})} 
-                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 bg-white transition-all ${editingAccount?.name === 'Dinheiro' ? 'text-slate-400 opacity-70' : ''}`}
+                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-black font-bold transition-all ${editingAccount?.name === 'Dinheiro' ? 'opacity-70' : ''}`}
                 >
                   <option value="checking">Conta Corrente</option>
                   <option value="savings">Poupança</option>

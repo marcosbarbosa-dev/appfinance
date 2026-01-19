@@ -118,7 +118,7 @@ const TransfersManager: React.FC = () => {
                   setFormData({...formData, fromAccountId: e.target.value});
                   setError(''); // Limpa erro ao trocar a conta
                 }}
-                className="w-full px-4 py-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold text-slate-700"
+                className="w-full px-4 py-4 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold text-black"
               >
                 <option value="">Selecione a conta</option>
                 {eligibleAccounts.map(acc => (
@@ -146,7 +146,7 @@ const TransfersManager: React.FC = () => {
                 required
                 value={formData.toAccountId}
                 onChange={(e) => setFormData({...formData, toAccountId: e.target.value})}
-                className="w-full px-4 py-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold text-slate-700"
+                className="w-full px-4 py-4 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold text-black"
               >
                 <option value="">Selecione a conta</option>
                 {eligibleAccounts.map(acc => (
@@ -171,7 +171,7 @@ const TransfersManager: React.FC = () => {
                     setError(''); // Limpa erro ao digitar
                   }}
                   placeholder="0,00"
-                  className="w-full pl-10 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none font-black text-slate-800 text-lg"
+                  className="w-full pl-10 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none font-black bg-white text-black text-lg"
                 />
               </div>
             </div>
@@ -182,7 +182,7 @@ const TransfersManager: React.FC = () => {
                 required
                 value={formData.date}
                 onChange={(e) => setFormData({...formData, date: e.target.value})}
-                className="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none font-bold text-slate-700"
+                className="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none font-bold bg-white text-black"
               />
             </div>
           </div>

@@ -202,7 +202,7 @@ const CategoriesManager: React.FC = () => {
                     required 
                     value={formData.name} 
                     onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                    className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-medium text-slate-700" 
+                    className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold bg-white text-black" 
                     placeholder="Ex: Alimentação, Lazer..."
                   />
                 </div>

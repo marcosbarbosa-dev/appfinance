@@ -15,7 +15,7 @@ const LogoInfinity = ({ className = "w-16 h-16" }: { className?: string }) => (
 );
 
 const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error, loading }) => {
-  const { login, supportInfo, maintenanceMessage, isSystemLocked } = useAuth();
+  const { login, supportInfo, maintenanceMessage, isSystemLocked, loginTitle, logoData } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -92,10 +92,16 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
         )}
 
         <div className={`text-center mb-8 transition-all duration-500 ${isSystemLocked && !lockDismissed ? 'opacity-20 grayscale scale-95' : ''}`}>
-          <div className="bg-violet-600 w-20 h-20 rounded-[2.2rem] flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-violet-200">
-            <LogoInfinity className="w-12 h-12" />
+          <div className="bg-violet-600 w-20 h-20 rounded-[2.2rem] flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-violet-200 overflow-hidden p-2">
+            {logoData ? (
+              <img src={logoData} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <LogoInfinity className="w-12 h-12" />
+            )}
           </div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Personalle Infinity</h1>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+            {loginTitle || "Personalle Infinity"}
+          </h1>
           <p className="text-slate-500 text-sm font-medium">Gestão Financeira Premium</p>
         </div>
 
@@ -106,7 +112,7 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
-              className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+              className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium bg-white text-black"
               placeholder="Digite seu usuário"
               required
             />
@@ -118,7 +124,7 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3.5 pr-12 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+                className="w-full px-4 py-3.5 pr-12 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium bg-white text-black"
                 placeholder="••••••••"
                 required
               />

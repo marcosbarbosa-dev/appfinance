@@ -15,7 +15,7 @@ const LogoInfinity = ({ className = "w-16 h-16" }: { className?: string }) => (
 );
 
 const FirstLoginFlow: React.FC = () => {
-  const { updatePassword, user } = useAuth();
+  const { updatePassword, user, logoData } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -42,8 +42,12 @@ const FirstLoginFlow: React.FC = () => {
       <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500"></div>
       
       <div className="text-center mb-8">
-        <div className="bg-violet-600 w-16 h-16 rounded-[1.8rem] flex items-center justify-center mx-auto mb-6 text-white shadow-lg shadow-violet-100">
-          <LogoInfinity className="w-10 h-10" />
+        <div className="bg-violet-600 w-16 h-16 rounded-[1.8rem] flex items-center justify-center mx-auto mb-6 text-white shadow-lg shadow-violet-100 overflow-hidden p-2">
+          {logoData ? (
+            <img src={logoData} alt="Logo" className="w-full h-full object-contain" />
+          ) : (
+            <LogoInfinity className="w-10 h-10" />
+          )}
         </div>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight">Ativação de Conta</h2>
         <p className="text-slate-500 text-sm mt-3 font-medium leading-relaxed">
@@ -59,7 +63,7 @@ const FirstLoginFlow: React.FC = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold text-slate-700"
+              className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold bg-white text-black"
               placeholder="••••••••"
               required
             />
@@ -70,7 +74,7 @@ const FirstLoginFlow: React.FC = () => {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold text-slate-700"
+              className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-bold bg-white text-black"
               placeholder="••••••••"
               required
             />

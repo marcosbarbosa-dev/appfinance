@@ -141,7 +141,7 @@ const NoticesManager: React.FC = () => {
               value={formData.title} 
               onChange={(e) => setFormData({...formData, title: e.target.value})} 
               placeholder="Ex: Manutenção Programada"
-              className="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm font-bold"
+              className="w-full px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm font-bold bg-white text-black"
             />
           </div>
           <div>
@@ -151,7 +151,7 @@ const NoticesManager: React.FC = () => {
               value={formData.message} 
               onChange={(e) => setFormData({...formData, message: e.target.value})} 
               placeholder="Digite os detalhes do comunicado..."
-              className="w-full h-32 px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
+              className="w-full h-32 px-4 py-3 rounded-2xl border border-slate-100 focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm bg-white text-black font-bold"
             />
           </div>
           <button 
@@ -212,7 +212,7 @@ const NoticesManager: React.FC = () => {
                     required 
                     value={formData.title} 
                     onChange={(e) => setFormData({...formData, title: e.target.value})} 
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm font-bold"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm font-bold bg-white text-black"
                   />
                 </div>
                 <div>
@@ -221,7 +221,7 @@ const NoticesManager: React.FC = () => {
                     required 
                     value={formData.message} 
                     onChange={(e) => setFormData({...formData, message: e.target.value})} 
-                    className="w-full h-32 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm"
+                    className="w-full h-32 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none text-sm bg-white text-black font-bold"
                   />
                 </div>
                 <button 

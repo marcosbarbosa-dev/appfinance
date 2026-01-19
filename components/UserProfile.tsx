@@ -104,7 +104,7 @@ const UserProfile: React.FC = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all"
+                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold"
                   />
                 </div>
 
@@ -141,7 +141,7 @@ const UserProfile: React.FC = () => {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all"
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold"
                       placeholder="••••••••"
                     />
                   </div>
@@ -151,7 +151,7 @@ const UserProfile: React.FC = () => {
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all"
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold"
                       placeholder="••••••••"
                     />
                   </div>

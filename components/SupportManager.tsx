@@ -98,7 +98,7 @@ const SupportManager: React.FC = () => {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
             <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-headset text-emerald-500"></i>Canais de Suporte</h3>
-            <textarea value={tempSupport} onChange={(e) => setTempSupport(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white outline-none transition-all text-sm" placeholder="Texto de suporte..." />
+            <textarea value={tempSupport} onChange={(e) => setTempSupport(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Texto de suporte..." />
           </div>
 
           <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
@@ -106,7 +106,7 @@ const SupportManager: React.FC = () => {
               <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-lock text-rose-500"></i>Trava do Sistema</h3>
               <button type="button" onClick={() => setTempLocked(!tempLocked)} className={`w-12 h-6 rounded-full relative transition-all duration-300 flex items-center px-0.5 ${tempLocked ? 'bg-rose-500 shadow-lg' : 'bg-slate-200'}`}><div className={`w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center transition-all ${tempLocked ? 'translate-x-6' : 'translate-x-0'}`}><i className={`fas ${tempLocked ? 'fa-lock' : 'fa-unlock'} text-[8px]`}></i></div></button>
             </div>
-            <textarea value={tempMaintenance} onChange={(e) => setTempMaintenance(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white outline-none transition-all text-sm" placeholder="Mensagem de manutenção..." />
+            <textarea value={tempMaintenance} onChange={(e) => setTempMaintenance(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Mensagem de manutenção..." />
           </div>
 
           <button type="submit" disabled={isSaving} className={`w-full py-4 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all ${tempLocked ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-900'}`}>{isSaving ? 'Salvando...' : 'Publicar Alterações'}</button>
@@ -131,7 +131,7 @@ const SupportManager: React.FC = () => {
             <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">{showRefreshConfirm ? 'Sincronização Global' : 'Segurança Global'}</h3>
             <p className="text-sm text-slate-500 font-medium">{showRefreshConfirm ? 'Todos os clientes recarregarão a página agora.' : 'Todos os clientes Platinum serão desconectados.'}</p>
             <div className="space-y-4">
-              <input type="password" placeholder="Senha Administrativa" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold focus:ring-2 focus:ring-slate-500 outline-none"/>
+              <input type="password" placeholder="Senha Administrativa" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center font-bold focus:ring-2 focus:ring-slate-500 outline-none bg-white text-black"/>
               {actionError && <p className="text-[10px] text-rose-600 font-black uppercase">{actionError}</p>}
             </div>
             <div className="flex flex-col gap-3">
