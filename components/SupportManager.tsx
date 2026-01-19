@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import { useAuth } from '../App';
 
 const SupportManager: React.FC = () => {
-  const { supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage, isSystemLocked, setIsSystemLocked, triggerGlobalRefresh, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet } = useAuth();
+  const { supportInfo, maintenanceMessage, isSystemLocked, updateAppConfig, triggerGlobalRefresh, setIsSidebarOpen, user: loggedAdmin, addLog, checkInternet } = useAuth();
   const [tempSupport, setTempSupport] = useState(supportInfo);
   const [tempMaintenance, setTempMaintenance] = useState(maintenanceMessage);
   const [tempLocked, setTempLocked] = useState(isSystemLocked);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Estados para comandos manuais do ADM
   const [showKickConfirm, setShowKickConfirm] = useState(false);
@@ -18,13 +19,41 @@ const SupportManager: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkInternet()) return;
+    
     setIsSaving(true);
-    await setSupportInfo(tempSupport);
-    await setMaintenanceMessage(tempMaintenance);
-    await setIsSystemLocked(tempLocked);
-    setIsSaving(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    setError(null);
+    setShowSuccess(false);
+
+    try {
+      // Salva todas as configurações em uma única chamada unificada
+      await updateAppConfig({
+        supportInfo: tempSupport,
+        maintenanceMessage: tempMaintenance,
+        isSystemLocked: tempLocked
+      });
+      
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
+      console.error("Erro técnico ao salvar suporte:", err);
+      
+      // Tratamento robusto para evitar [object Object] na tela
+      let errorMsg = "Erro ao salvar as configurações.";
+      if (typeof err === 'string') {
+        errorMsg = err;
+      } else if (err && err.message) {
+        errorMsg = err.message;
+      } else if (err && err.details) {
+        errorMsg = typeof err.details === 'string' ? err.details : JSON.stringify(err.details);
+      } else {
+        errorMsg = JSON.stringify(err);
+      }
+      
+      setError(errorMsg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const executeKickAll = async () => {
@@ -33,14 +62,18 @@ const SupportManager: React.FC = () => {
       setActionError('Senha administrativa incorreta.');
       return;
     }
-    await setIsSystemLocked(true);
-    setTempLocked(true);
-    addLog(loggedAdmin, 'edit_user', 'Acesso global bloqueado: Desconexão forçada enviada.');
-    setShowKickConfirm(false);
-    setAdminPassword('');
-    setActionError('');
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    try {
+      await updateAppConfig({ isSystemLocked: true });
+      setTempLocked(true);
+      addLog(loggedAdmin, 'edit_user', 'Acesso global bloqueado: Desconexão forçada enviada.');
+      setShowKickConfirm(false);
+      setAdminPassword('');
+      setActionError('');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
+      setActionError(err.message || 'Falha ao executar comando.');
+    }
   };
 
   const executeGlobalRefresh = async () => {
@@ -49,13 +82,17 @@ const SupportManager: React.FC = () => {
       setActionError('Senha administrativa incorreta.');
       return;
     }
-    await triggerGlobalRefresh();
-    addLog(loggedAdmin, 'edit_user', 'Comando manual de Refresh Global disparado.');
-    setShowRefreshConfirm(false);
-    setAdminPassword('');
-    setActionError('');
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    try {
+      await triggerGlobalRefresh();
+      addLog(loggedAdmin, 'edit_user', 'Comando manual de Refresh Global disparado.');
+      setShowRefreshConfirm(false);
+      setAdminPassword('');
+      setActionError('');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
+      setActionError(err.message || 'Falha ao executar comando.');
+    }
   };
 
   return (
@@ -108,6 +145,13 @@ const SupportManager: React.FC = () => {
             </div>
             <textarea value={tempMaintenance} onChange={(e) => setTempMaintenance(e.target.value)} className="w-full h-24 px-4 py-3 rounded-2xl border border-slate-100 outline-none transition-all text-sm bg-white text-black font-bold" placeholder="Mensagem de manutenção..." />
           </div>
+
+          {error && (
+            <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-100 animate-in shake">
+              <i className="fas fa-exclamation-triangle mr-2"></i>
+              {error}
+            </div>
+          )}
 
           <button type="submit" disabled={isSaving} className={`w-full py-4 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all ${tempLocked ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-900'}`}>{isSaving ? 'Salvando...' : 'Publicar Alterações'}</button>
         </form>

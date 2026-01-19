@@ -49,9 +49,8 @@ interface AuthContextType {
   acknowledgeNotice: (noticeId: string) => Promise<void>;
   acknowledgedNoticeIds: string[] | null;
   supportInfo: string;
-  setSupportInfo: (info: string) => Promise<void>;
   maintenanceMessage: string;
-  setMaintenanceMessage: (info: string) => Promise<void>;
+  updateAppConfig: (config: { supportInfo?: string, maintenanceMessage?: string, isLoggingEnabled?: boolean, isSystemLocked?: boolean }) => Promise<void>;
   loginTitle: string;
   setLoginTitle: (title: string) => Promise<void>;
   sidebarTitle: string;
@@ -105,7 +104,7 @@ const LogoInfinity = ({ className = "w-16 h-16" }: { className?: string }) => (
 );
 
 const LogoutLoading: React.FC<{ title: string; message: string; logoData?: string | null }> = ({ title, message, logoData }) => (
-  <div className="fixed inset-0 z-[300] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center animate-in fade-in duration-500">
+  <div className="fixed inset-0 z-[300] bg-white flex items-center justify-center animate-in fade-in duration-500">
     <div className="text-center space-y-6">
       <div className="relative w-24 h-24 mx-auto">
         <div className="absolute inset-0 bg-violet-500/20 rounded-full animate-ping"></div>
@@ -118,10 +117,10 @@ const LogoutLoading: React.FC<{ title: string; message: string; logoData?: strin
         </div>
       </div>
       <div className="space-y-2">
-        <h2 className="text-white text-xl font-black tracking-tight">{title}</h2>
+        <h2 className="text-slate-900 text-xl font-black tracking-tight">{title}</h2>
         <div className="flex items-center justify-center gap-3 px-8">
-          <i className="fas fa-circle-notch animate-spin text-violet-400 text-sm"></i>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">{message}</p>
+          <i className="fas fa-circle-notch animate-spin text-violet-600 text-sm"></i>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">{message}</p>
         </div>
       </div>
     </div>
@@ -226,22 +225,22 @@ const App: React.FC = () => {
   const fetchGlobalConfig = useCallback(async () => {
     if (!navigator.onLine) return;
     try {
-      // Busca status do sistema (app_config)
+      // Busca status do sistema (app_config) com mapeamento snake_case
       const { data: configData, error: configError } = await supabase.from('app_config').select('*').eq('id', 'main').maybeSingle();
       if (configData) {
-        setSupportInfoState(configData.supportInfo || "");
-        setMaintenanceMessageState(configData.maintenanceMessage || "");
-        setIsLoggingEnabledState(configData.isLoggingEnabled ?? true);
-        setIsSystemLockedState(configData.isSystemLocked ?? false);
+        setSupportInfoState(configData.support_info || "");
+        setMaintenanceMessageState(configData.maintenance_message || "");
+        setIsLoggingEnabledState(configData.is_logging_enabled ?? true);
+        setIsSystemLockedState(configData.is_system_locked ?? false);
 
         if (lastGlobalRefreshId.current === null) {
-          lastGlobalRefreshId.current = configData.globalRefreshId;
-        } else if (configData.globalRefreshId && lastGlobalRefreshId.current !== configData.globalRefreshId) {
+          lastGlobalRefreshId.current = configData.global_refresh_id;
+        } else if (configData.global_refresh_id && lastGlobalRefreshId.current !== configData.global_refresh_id) {
           window.location.reload();
           return;
         }
 
-        if (configData.isSystemLocked && userRef.current && userRef.current.role !== 'admin') {
+        if (configData.is_system_locked && userRef.current && userRef.current.role !== 'admin') {
           logout("Sessão encerrada pelo administrador.");
           return;
         }
@@ -515,16 +514,23 @@ const App: React.FC = () => {
     setLogsState([]);
   };
 
-  const setSupportInfo = async (info: string) => {
-    const { error } = await supabase.from('app_config').upsert({ id: 'main', supportInfo: info });
+  const updateAppConfig = async (config: { supportInfo?: string, maintenanceMessage?: string, isLoggingEnabled?: boolean, isSystemLocked?: boolean }) => {
+    // Mapeamento de camelCase para snake_case para o banco de dados
+    const dbPayload: any = { id: 'main' };
+    if (config.supportInfo !== undefined) dbPayload.support_info = config.supportInfo;
+    if (config.maintenanceMessage !== undefined) dbPayload.maintenance_message = config.maintenanceMessage;
+    if (config.isLoggingEnabled !== undefined) dbPayload.is_logging_enabled = config.isLoggingEnabled;
+    if (config.isSystemLocked !== undefined) dbPayload.is_system_locked = config.isSystemLocked;
+
+    const { error } = await supabase.from('app_config').upsert(dbPayload);
     if (error) throw error;
-    setSupportInfoState(info);
+
+    if (config.supportInfo !== undefined) setSupportInfoState(config.supportInfo);
+    if (config.maintenanceMessage !== undefined) setMaintenanceMessageState(config.maintenanceMessage);
+    if (config.isLoggingEnabled !== undefined) setIsLoggingEnabledState(config.isLoggingEnabled);
+    if (config.isSystemLocked !== undefined) setIsSystemLockedState(config.isSystemLocked);
   };
-  const setMaintenanceMessage = async (msg: string) => {
-    const { error } = await supabase.from('app_config').upsert({ id: 'main', maintenanceMessage: msg });
-    if (error) throw error;
-    setMaintenanceMessageState(msg);
-  };
+
   const setLoginTitle = async (title: string) => {
     const { error } = await supabase.from('ui_config').upsert({ id: 'main', loginTitle: title });
     if (error) throw error;
@@ -551,18 +557,18 @@ const App: React.FC = () => {
     setLogoDataState(data);
   };
   const setIsLoggingEnabled = async (enabled: boolean) => {
-    const { error } = await supabase.from('app_config').upsert({ id: 'main', isLoggingEnabled: enabled });
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', is_logging_enabled: enabled });
     if (error) throw error;
     setIsLoggingEnabledState(enabled);
   };
   const setIsSystemLocked = async (locked: boolean) => {
-    const { error } = await supabase.from('app_config').upsert({ id: 'main', isSystemLocked: locked });
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', is_system_locked: locked });
     if (error) throw error;
     setIsSystemLockedState(locked);
   };
   const triggerGlobalRefresh = async () => {
     const newRid = crypto.randomUUID();
-    const { error } = await supabase.from('app_config').upsert({ id: 'main', globalRefreshId: newRid });
+    const { error } = await supabase.from('app_config').upsert({ id: 'main', global_refresh_id: newRid });
     if (error) throw error;
   };
 
@@ -596,7 +602,7 @@ const App: React.FC = () => {
       transactions, saveTransaction, saveTransactions, deleteTransactionFromDb,
       bankAccounts, saveBankAccount, saveBankAccountsBatch, deleteBankAccount,
       logs, setLogs, notices, saveNotice, deleteNotice, acknowledgeNotice, acknowledgedNoticeIds,
-      supportInfo, setSupportInfo, maintenanceMessage, setMaintenanceMessage,
+      supportInfo, maintenanceMessage, updateAppConfig,
       loginTitle, setLoginTitle, sidebarTitle, setSidebarTitle, 
       logoutTitle, setLogoutTitle, logoutMessage: logoutMessageConfig, setLogoutMessageConfig,
       logoData, setLogoData,
