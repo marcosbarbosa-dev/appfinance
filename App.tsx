@@ -1,6 +1,6 @@
 
 import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
-import { User, Category, Transaction, BankAccount, SystemLog, LogAction, Notice } from './types';
+import { User, Category, Transaction, TransactionType, BankAccount, SystemLog, LogAction, Notice } from './types';
 import { supabase } from './supabase';
 import LoginForm from './components/LoginForm';
 import UserHome from './components/UserHome';
@@ -81,6 +81,8 @@ interface AuthContextType {
   updateProfile: (name: string, avatar: string, password?: string) => Promise<void>;
   isOnline: boolean;
   checkInternet: () => boolean;
+  transactionListTab: TransactionType;
+  setTransactionListTab: (tab: TransactionType) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -163,6 +165,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflineAlert, setShowOfflineAlert] = useState(false);
+  const [transactionListTab, setTransactionListTab] = useState<TransactionType>('expense');
 
   useEffect(() => {
     userRef.current = user;
@@ -609,7 +612,8 @@ const App: React.FC = () => {
       isLoggingEnabled, setIsLoggingEnabled, isSystemLocked, setIsSystemLocked,
       triggerGlobalRefresh,
       addLog, deleteLog, clearLogs, activeView, setActiveView, viewMode, setViewMode, isSidebarOpen, setIsSidebarOpen,
-      login, logout, updatePassword, updateProfile, isOnline, checkInternet
+      login, logout, updatePassword, updateProfile, isOnline, checkInternet,
+      transactionListTab, setTransactionListTab
     }}>
       {!user ? (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">

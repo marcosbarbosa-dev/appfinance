@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import { Transaction, BankAccount } from '../types';
 
 const TransfersManager: React.FC = () => {
-  const { user, transactions, bankAccounts, saveTransactions, setIsSidebarOpen, checkInternet, setActiveView } = useAuth();
+  const { user, transactions, bankAccounts, saveTransactions, setIsSidebarOpen, checkInternet, setActiveView, setTransactionListTab } = useAuth();
   
   const [formData, setFormData] = useState({
     fromAccountId: '',
@@ -82,6 +82,9 @@ const TransfersManager: React.FC = () => {
       };
 
       await saveTransactions([debitTransaction, creditTransaction]);
+      
+      // Define a aba ativa como 'transfer' antes de mudar de tela
+      setTransactionListTab('transfer');
       setActiveView('lancamentos');
     } catch (err) {
       setError('Falha ao processar transferência.');

@@ -5,8 +5,12 @@ import { Transaction } from '../types';
 import AddTransaction from './AddTransaction';
 
 const TransactionsList: React.FC = () => {
-  const { user, transactions, deleteTransactionFromDb, categories, bankAccounts, setIsSidebarOpen, checkInternet } = useAuth();
-  const [activeTab, setActiveTab] = useState<'income' | 'expense' | 'credit_card' | 'transfer'>('expense');
+  const { user, transactions, deleteTransactionFromDb, categories, bankAccounts, setIsSidebarOpen, checkInternet, transactionListTab, setTransactionListTab } = useAuth();
+  
+  // Sincroniza o estado local do tab com o estado global do contexto
+  const activeTab = transactionListTab;
+  const setActiveTab = setTransactionListTab;
+
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
