@@ -5,13 +5,6 @@ import { useAuth } from '../App';
 const VersionView: React.FC = () => {
   const { versionLink, versionText, versionBtnColor, versionBtnLabel, setIsSidebarOpen } = useAuth();
   
-  const handleUpdateClick = () => {
-    if (versionLink) {
-      // Abre em uma nova página/aba fora da aplicação atual
-      window.open(versionLink, '_blank', 'noopener,noreferrer');
-    }
-  };
-
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 pb-24 animate-in fade-in duration-500">
       <div className="flex items-center gap-4 mb-8">
@@ -45,14 +38,16 @@ const VersionView: React.FC = () => {
 
         <div className="w-full max-w-sm space-y-4">
           {versionLink ? (
-            <button 
-              onClick={handleUpdateClick}
+            <a 
+              href={versionLink}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{ backgroundColor: versionBtnColor || '#8b5cf6' }}
-              className="w-full py-5 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 hover:brightness-110"
+              className="w-full py-5 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 hover:brightness-110 no-underline"
             >
               <i className="fas fa-cloud-arrow-down"></i>
               {versionBtnLabel || "Verificar Atualizações"}
-            </button>
+            </a>
           ) : (
             <div className="w-full py-5 bg-slate-100 text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 flex items-center justify-center gap-3 cursor-not-allowed">
               <i className="fas fa-check-circle"></i>
