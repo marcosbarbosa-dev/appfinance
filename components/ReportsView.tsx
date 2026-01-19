@@ -1,12 +1,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../App';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ReportsView: React.FC = () => {
   const { user, transactions, bankAccounts, categories, setIsSidebarOpen } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [reportType, setReportType] = useState<'income' | 'expense'>('expense');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -77,8 +80,107 @@ const ReportsView: React.FC = () => {
 
   const totalMonthlyValue = monthlyTransactions.reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
 
+  const generatePDF = async () => {
+    // Captura TODAS as transações do período para o relatório consolidado
+    const allT = transactions.filter(t => {
+      const d = new Date(t.date);
+      return t.userId === user?.uid && 
+             d.getUTCMonth() === currentMonth && 
+             d.getUTCFullYear() === currentYear;
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (allT.length === 0) return;
+    setIsGenerating(true);
+
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      
+      // Cabeçalho
+      doc.setFillColor(139, 92, 246); // Violet-500
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Extrato Consolidado Personalle', 15, 18);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${months[currentMonth]} de ${currentYear}`, 15, 25);
+      
+      // Resumo Financeiro (Regra: Transferências NÃO contam como entrada/saída no balanço)
+      const totalIn = allT.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0);
+      const totalOut = allT.filter(t => (t.type === 'expense' || t.type === 'credit_card')).reduce((a, b) => a + Math.abs(b.amount), 0);
+      const balance = totalIn - totalOut;
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 15, 45);
+      doc.text(`Proprietário: ${user?.name || 'N/A'}`, 15, 49);
+
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Balanço do Período', 15, 62);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(16, 185, 129);
+      doc.text(`(+) Entradas: R$ ${totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 15, 70);
+      doc.setTextColor(244, 63, 94);
+      doc.text(`(-) Saídas: R$ ${totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 15, 76);
+      
+      doc.setTextColor(balance >= 0 ? 16 : 244, balance >= 0 ? 185 : 63, balance >= 0 ? 129 : 94);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`(=) Saldo Final: R$ ${balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 15, 84);
+
+      // Tabela de Movimentação Completa (Incluindo todas as colunas pedidas)
+      const tableData = allT.map(t => {
+        const acc = bankAccounts.find(a => a.id === t.accountId);
+        return [
+          new Date(t.date).toLocaleDateString('pt-BR'),
+          t.description || 'Sem descrição',
+          t.category || 'Geral',
+          acc?.name || 'N/A',
+          `${t.amount > 0 ? '+' : '-'} R$ ${Math.abs(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          t.type === 'transfer' ? 'Transferência' : (t.type === 'income' ? 'Entrada' : 'Saída')
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 92,
+        head: [['Data', 'Descrição', 'Categoria', 'Conta', 'Valor', 'Tipo']],
+        body: tableData,
+        headStyles: { fillColor: [139, 92, 246], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: {
+          4: { halign: 'right', fontStyle: 'bold' },
+          5: { fontStyle: 'italic', fontSize: 7 }
+        },
+        didParseCell: function(data) {
+          if (data.section === 'body') {
+            const rowType = data.row.cells[5].text[0];
+            if (data.column.index === 4) {
+              if (rowType === 'Transferência') data.cell.styles.textColor = [59, 130, 246]; // Azul para transferências
+              else if (rowType === 'Entrada') data.cell.styles.textColor = [16, 185, 129]; // Verde
+              else data.cell.styles.textColor = [244, 63, 94]; // Vermelho
+            }
+          }
+        }
+      });
+
+      doc.save(`Extrato_Geral_Infinity_${months[currentMonth]}_${currentYear}.pdf`);
+    } catch (err: any) {
+      console.error("Erro ao gerar PDF:", err);
+      alert(`Erro na geração do relatório: ${err?.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 pb-24">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 pb-32">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex items-center gap-4 justify-between md:justify-start">
           <div className="flex items-center gap-4">
@@ -96,7 +198,6 @@ const ReportsView: React.FC = () => {
         </div>
         
         <div className="flex justify-center md:justify-end gap-3 flex-wrap">
-          {/* Toggle de Tipo de Relatório */}
           <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/50 shadow-inner">
             <button 
               onClick={() => setReportType('income')} 
@@ -213,7 +314,6 @@ const ReportsView: React.FC = () => {
               </div>
             ))}
 
-            {/* Card de Resumo - Adaptável ao tipo */}
             <div className={`bg-white p-6 rounded-[2.5rem] border shadow-lg mt-8 relative overflow-hidden group ${reportType === 'income' ? 'border-emerald-100 shadow-emerald-50/50' : 'border-rose-100 shadow-rose-50/50'}`}>
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
                 <i className={`fas ${reportType === 'income' ? 'fa-arrow-up-right-from-square text-emerald-500' : 'fa-receipt text-rose-500'} text-6xl`}></i>
@@ -229,7 +329,7 @@ const ReportsView: React.FC = () => {
               
               <div className="mt-6 pt-6 border-t border-slate-50 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${reportType === 'income' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${reportType === 'income' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-600'}`}>
                       <i className={`fas ${reportType === 'income' ? 'fa-arrow-up-long' : 'fa-arrow-down-long'} text-xs`}></i>
                    </div>
                    <span className="text-[10px] font-bold text-slate-500 uppercase">{monthlyTransactions.length} Lançamentos</span>
@@ -239,12 +339,24 @@ const ReportsView: React.FC = () => {
                 </span>
               </div>
             </div>
-
-            <div className="p-4 text-center">
-               <p className="text-[10px] text-slate-300 italic">Os dados acima referem-se exclusivamente ao fluxo de {reportType === 'income' ? 'entrada' : 'saída'} do mês de {months[currentMonth]} de {currentYear}.</p>
-            </div>
           </div>
         </div>
+      </div>
+
+      {/* Botão Gerar PDF Minimalista com Fundo Vermelho Suave */}
+      <div className="flex justify-center pt-10 pb-4 border-t border-slate-100">
+        <button 
+          onClick={generatePDF}
+          disabled={isGenerating || transactions.length === 0}
+          className="flex items-center gap-2 px-5 py-2 bg-rose-50 text-rose-500 border border-rose-100 rounded-xl transition-all active:scale-95 disabled:opacity-50 hover:bg-rose-100"
+        >
+          {isGenerating ? (
+            <i className="fas fa-circle-notch animate-spin text-xs"></i>
+          ) : (
+            <i className="fas fa-file-pdf text-xs"></i>
+          )}
+          <span className="text-[10px] font-bold uppercase tracking-widest">Gerar PDF</span>
+        </button>
       </div>
     </div>
   );
