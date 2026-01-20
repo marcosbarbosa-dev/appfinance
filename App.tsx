@@ -1,4 +1,3 @@
-
 import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
 import { User, Category, Transaction, TransactionType, BankAccount, SystemLog, LogAction, Notice, Goal } from './types';
 import { supabase } from './supabase';
@@ -329,8 +328,12 @@ const App: React.FC = () => {
         if (catsData) setCategoriesState(catsData);
         const { data: transData } = await supabase.from('transactions').select('*').eq('userId', loggedInUser.uid);
         if (transData) setTransactionsState(transData);
+        
         const { data: accsData } = await supabase.from('bank_accounts').select('*').eq('userId', loggedInUser.uid);
-        if (accsData) setBankAccountsState(accsData);
+        if (accsData) {
+          setBankAccountsState(accsData);
+        }
+        
         const { data: goalsData } = await supabase.from('goals').select('*').eq('userId', loggedInUser.uid);
         if (goalsData) setGoalsState(goalsData);
       }
@@ -448,8 +451,18 @@ const App: React.FC = () => {
   };
 
   const saveCategoriesBatch = async (cats: Category[]) => {
-    await supabase.from('categories').upsert(cats);
-    setCategoriesState(prev => [...prev, ...cats]);
+    if (!user) return;
+    const catsWithUser = cats.map(c => ({ ...c, userId: c.userId || user.uid }));
+    await supabase.from('categories').upsert(catsWithUser);
+    setCategoriesState(prev => {
+      const newState = [...prev];
+      catsWithUser.forEach(newCat => {
+        const idx = newState.findIndex(c => c.id === newCat.id);
+        if (idx >= 0) newState[idx] = newCat;
+        else newState.push(newCat);
+      });
+      return newState;
+    });
   };
 
   const deleteCategory = async (id: string) => {
@@ -479,28 +492,65 @@ const App: React.FC = () => {
   const saveBankAccount = async (acc: BankAccount) => {
     if (!user) return;
     const accWithUser = { ...acc, userId: user.uid };
-    await supabase.from('bank_accounts').upsert(accWithUser);
+
     setBankAccountsState(prev => {
       const exists = prev.find(a => a.id === acc.id);
-      if (exists) return prev.map(a => a.id === acc.id ? accWithUser : a);
-      return [...prev, accWithUser];
+      let newState;
+      if (exists) newState = prev.map(a => a.id === acc.id ? accWithUser : a);
+      else newState = [...prev, accWithUser];
+
+      if (accWithUser.isDefault) {
+        return newState.map(a => a.id === accWithUser.id ? a : { ...a, isDefault: false });
+      }
+      return newState;
     });
+
+    try {
+      const { error } = await supabase.from('bank_accounts').upsert(accWithUser);
+      if (error) console.error("Erro ao salvar conta no Supabase:", error.message);
+    } catch (err) {
+      console.error("Exceção ao persistir conta:", err);
+    }
   };
 
   const saveBankAccountsBatch = async (accs: BankAccount[]) => {
-    await supabase.from('bank_accounts').upsert(accs);
-    setBankAccountsState(prev => [...prev, ...accs]);
+    if (!user) return;
+    const accsWithUser = accs.map(a => ({ ...a, userId: a.userId || user.uid }));
+    
+    setBankAccountsState(prev => {
+      const newState = [...prev];
+      accsWithUser.forEach(newAcc => {
+        const idx = newState.findIndex(a => a.id === newAcc.id);
+        if (idx >= 0) newState[idx] = newAcc;
+        else newState.push(newAcc);
+      });
+
+      const defaultAcc = accsWithUser.find(a => a.isDefault);
+      if (defaultAcc) {
+        return newState.map(a => a.id === defaultAcc.id ? a : { ...a, isDefault: false });
+      }
+      return newState;
+    });
+
+    try {
+      await supabase.from('bank_accounts').upsert(accsWithUser);
+    } catch (err) {
+      console.error("Erro ao persistir lote de contas no Supabase:", err);
+    }
   };
 
   const deleteBankAccount = async (id: string) => {
-    await supabase.from('bank_accounts').delete().eq('id', id);
     setBankAccountsState(prev => prev.filter(a => a.id !== id));
+    try {
+      await supabase.from('bank_accounts').delete().eq('id', id);
+    } catch (err) {
+      console.error("Erro ao deletar conta no Supabase:", err);
+    }
   };
 
   const saveGoal = async (goal: Goal) => {
     if (!user) return;
     
-    // Atualização Otimista: Muda a UI primeiro
     setGoalsState(prev => {
       const exists = prev.find(g => g.id === goal.id);
       if (exists) return prev.map(g => g.id === goal.id ? goal : g);
@@ -518,14 +568,12 @@ const App: React.FC = () => {
   };
 
   const deleteGoal = async (id: string) => {
-    // Atualização Otimista: remove da UI instantaneamente para evitar reaparecimento
     setGoalsState(prev => prev.filter(g => g.id !== id));
     
     try {
       const { error } = await supabase.from('goals').delete().eq('id', id);
       if (error) {
         console.error("Erro ao deletar meta no banco:", error.message);
-        // Em caso de erro real, o próximo ciclo de fetchUserData (10s) restaurará o dado correto
       }
     } catch (e) {
       console.error("Exceção ao deletar meta:", e);

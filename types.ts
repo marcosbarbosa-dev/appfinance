@@ -45,6 +45,7 @@ export interface BankAccount {
   name: string;
   type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'cash';
   bankName: string;
+  isDefault?: boolean;
 }
 
 export interface Goal {

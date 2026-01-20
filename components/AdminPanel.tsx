@@ -274,7 +274,7 @@ const AdminPanel: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <h3 className="text-lg font-bold">Gerenciar Membro</h3>
@@ -354,7 +354,7 @@ const AdminPanel: React.FC = () => {
       )}
 
       {showAdminRoleConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
             <div className="w-20 h-20 mx-auto bg-violet-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl"><i className="fas fa-user-shield"></i></div>
             <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Conceder Acesso Admin</h3>
@@ -372,7 +372,7 @@ const AdminPanel: React.FC = () => {
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
             <div className="w-20 h-20 mx-auto bg-rose-600 text-white rounded-[2rem] flex items-center justify-center text-3xl shadow-xl"><i className="fas fa-trash-alt"></i></div>
             <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter">Apagar Conta Permanentemente</h3>
@@ -390,7 +390,7 @@ const AdminPanel: React.FC = () => {
       )}
 
       {showGenericConfirm.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
             <div className={`w-20 h-20 mx-auto rounded-[2rem] flex items-center justify-center text-3xl ${showGenericConfirm.type === 'refresh' ? 'bg-sky-50 text-sky-500' : 'bg-violet-50 text-violet-600'}`}>
               <i className={`fas ${showGenericConfirm.type === 'refresh' ? 'fa-sync-alt' : (showGenericConfirm.type === 'reset' ? 'fa-key' : 'fa-user-cog')}`}></i>

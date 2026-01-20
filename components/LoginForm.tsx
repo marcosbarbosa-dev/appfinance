@@ -58,32 +58,32 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
 
   return (
     <>
-      <div className="relative bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-slate-100 overflow-hidden">
-        
-        {isSystemLocked && !lockDismissed && (
-          <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-500">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 text-center space-y-6 max-w-xs transform animate-in zoom-in-95">
-              <div className="w-20 h-20 mx-auto bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center text-3xl shadow-inner animate-pulse">
-                <i className="fas fa-lock"></i>
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-black text-slate-800 tracking-tight">Acesso Restrito</h3>
-                <p className="text-xs text-slate-500 font-bold leading-relaxed px-2 uppercase tracking-tight">
-                  {maintenanceMessage || "Atualização em andamento"}
-                </p>
-              </div>
-              <div className="pt-4">
-                <button 
-                  onClick={() => setLockDismissed(true)}
-                  className="w-full py-4 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-                >
-                  Tentar Login
-                </button>
-              </div>
+      {isSystemLocked && !lockDismissed && (
+        <div className="fixed inset-0 z-[150] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-500">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 text-center space-y-6 max-w-xs transform animate-in zoom-in-95">
+            <div className="w-20 h-20 mx-auto bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center text-3xl shadow-inner animate-pulse">
+              <i className="fas fa-lock"></i>
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">Acesso Restrito</h3>
+              <p className="text-xs text-slate-500 font-bold leading-relaxed px-2 uppercase tracking-tight">
+                {maintenanceMessage || "Atualização em andamento"}
+              </p>
+            </div>
+            <div className="pt-4">
+              <button 
+                onClick={() => setLockDismissed(true)}
+                className="w-full py-4 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+              >
+                Tentar Login
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      <div className="relative bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-slate-100 overflow-hidden">
+        
         {countdown !== null && !isSystemLocked && (
           <div className="absolute top-0 left-0 right-0 bg-emerald-600 text-white p-2 text-center text-[9px] font-black uppercase tracking-widest z-[60] animate-in slide-in-from-top duration-500">
             <i className="fas fa-sync-alt animate-spin mr-2"></i>
@@ -160,7 +160,7 @@ const LoginForm: React.FC<{ error: string | null; loading: boolean }> = ({ error
       </div>
 
       {showSupport && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden">
             <div className="p-8 text-center space-y-6">
               <div className="w-20 h-20 mx-auto bg-violet-50 text-violet-600 rounded-3xl flex items-center justify-center text-3xl shadow-inner"><i className="fas fa-headset"></i></div>

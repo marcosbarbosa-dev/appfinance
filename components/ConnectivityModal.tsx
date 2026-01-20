@@ -10,7 +10,7 @@ const ConnectivityModal: React.FC<ConnectivityModalProps> = ({ show, onClose }) 
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xl animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden transform animate-in zoom-in-95 duration-300">
         <div className="p-10 text-center space-y-8">
           <div className="relative w-24 h-24 mx-auto">

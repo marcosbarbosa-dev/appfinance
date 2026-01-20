@@ -1,16 +1,46 @@
-
 import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAuth } from '../App';
+import { TransactionType } from '../types';
+import AddTransaction from './AddTransaction';
+import TransfersManager from './TransfersManager';
 
 interface BreakdownData {
   name: string;
   value: number;
 }
 
-const COLORS = ['#8b5cf6', '#a855f7', '#d946ef', '#c084fc', '#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ec4899'];
+// Paletas de cores robustas para garantir unicidade visual dentro de cada gráfico
+const PALETTES = {
+  income: [
+    '#059669', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0', 
+    '#064e3b', '#065f46', '#047857', '#059669', '#10b981'
+  ],
+  category: [
+    '#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', 
+    '#4c1d95', '#5b21b6', '#6d28d9', '#9333ea', '#a855f7'
+  ],
+  cash: [
+    '#d97706', '#f59e0b', '#fbbf24', '#fcd34d', '#fde68a', 
+    '#78350f', '#92400e', '#b45309', '#ea580c', '#f97316'
+  ],
+  digital: [
+    '#0284c7', '#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd', 
+    '#0c4a6e', '#075985', '#0369a1', '#2563eb', '#3b82f6'
+  ],
+  card: [
+    '#e11d48', '#f43f5e', '#fb7185', '#fda4af', '#fecdd3', 
+    '#881337', '#9f1239', '#be123c', '#db2777', '#ec4899'
+  ]
+};
 
-const DashboardWidget: React.FC<{ title: string; data: BreakdownData[]; emptyMessage: string; icon: string }> = ({ title, data, emptyMessage, icon }) => {
+const DashboardWidget: React.FC<{ 
+  title: string; 
+  data: BreakdownData[]; 
+  emptyMessage: string; 
+  icon: string;
+  palette: string[];
+}> = ({ title, data, emptyMessage, icon, palette }) => {
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-full min-h-[350px]">
       <h4 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -33,7 +63,7 @@ const DashboardWidget: React.FC<{ title: string; data: BreakdownData[]; emptyMes
                   isAnimationActive={false}
                 >
                   {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={palette[index % palette.length]} />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -54,7 +84,7 @@ const DashboardWidget: React.FC<{ title: string; data: BreakdownData[]; emptyMes
           {data.map((entry, index) => (
             <div key={entry.name} className="flex items-center justify-between group">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: palette[index % palette.length] }}></div>
                 <span className="text-[11px] font-bold text-slate-600 truncate max-w-[100px]">{entry.name}</span>
               </div>
               <span className="text-[11px] font-black text-slate-800">R$ {entry.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
@@ -67,10 +97,13 @@ const DashboardWidget: React.FC<{ title: string; data: BreakdownData[]; emptyMes
 };
 
 const UserHome: React.FC = () => {
-  const { user, transactions, bankAccounts, setActiveView, setIsSidebarOpen } = useAuth();
+  const { user, transactions, bankAccounts, setIsSidebarOpen } = useAuth();
   
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<TransactionType>('expense');
 
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -91,12 +124,18 @@ const UserHome: React.FC = () => {
     setCurrentYear(prev => dir === 'next' ? prev + 1 : prev - 1);
   };
 
+  const openAddForm = (type: TransactionType) => {
+    setSelectedType(type);
+    setIsAddModalOpen(true);
+    setShowAddMenu(false);
+  };
+
   const stats = useMemo(() => {
     const userTransactions = transactions.filter(t => {
-      const [y, m] = t.date.split('-').map(Number);
+      const date = new Date(t.date + 'T12:00:00');
       return t.userId === user?.uid && 
-             (m - 1) === currentMonth && 
-             y === currentYear;
+             date.getMonth() === currentMonth && 
+             date.getFullYear() === currentYear;
     });
     
     const liquidAccountIds = bankAccounts
@@ -131,7 +170,19 @@ const UserHome: React.FC = () => {
       })
       .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
 
-    // Breakdown de gastos por categoria
+    const cardMap: Record<string, number> = {};
+    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
+      const acc = bankAccounts.find(a => a.id === t.accountId);
+      if (acc && acc.type === 'credit_card') {
+        cardMap[acc.name] = (cardMap[acc.name] || 0) + Math.abs(t.amount);
+      }
+    });
+    const cardBreakdown = Object.entries(cardMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    const totalCardExpense = cardBreakdown.reduce((acc, curr) => acc + curr.value, 0);
+
     const categoryMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
       const val = Math.abs(t.amount);
@@ -143,7 +194,6 @@ const UserHome: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    // Breakdown de entradas por conta
     const incomeAccountMap: Record<string, number> = {};
     userTransactions.filter(t => t.type === 'income').forEach(t => {
       const acc = bankAccounts.find(a => a.id === t.accountId);
@@ -153,19 +203,6 @@ const UserHome: React.FC = () => {
       }
     });
     const incomeAccountBreakdown = Object.entries(incomeAccountMap)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
-    // Breakdown de saídas por conta (Total)
-    const expenseAccountMap: Record<string, number> = {};
-    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
-      const acc = bankAccounts.find(a => a.id === t.accountId);
-      if (acc) {
-        const val = Math.abs(t.amount);
-        expenseAccountMap[acc.name] = (expenseAccountMap[acc.name] || 0) + val;
-      }
-    });
-    const expenseAccountBreakdown = Object.entries(expenseAccountMap)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
@@ -193,20 +230,9 @@ const UserHome: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    const cardMap: Record<string, number> = {};
-    userTransactions.filter(t => t.type === 'expense' || t.type === 'credit_card').forEach(t => {
-      const acc = bankAccounts.find(a => a.id === t.accountId);
-      if (acc && acc.type === 'credit_card') {
-        cardMap[acc.name] = (cardMap[acc.name] || 0) + Math.abs(t.amount);
-      }
-    });
-    const cardBreakdown = Object.entries(cardMap)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
     return { 
-      totalBalance, totalIncome, totalExpense, cashExpenses, digitalExpenses, 
-      categoryBreakdown, incomeAccountBreakdown, expenseAccountBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
+      totalBalance, totalIncome, totalExpense, cashExpenses, digitalExpenses, totalCardExpense,
+      categoryBreakdown, incomeAccountBreakdown, cashCategoryBreakdown, digitalAccountBreakdown, cardBreakdown 
     };
   }, [transactions, user, bankAccounts, currentMonth, currentYear]);
 
@@ -227,13 +253,6 @@ const UserHome: React.FC = () => {
               <p className="text-slate-500 text-[10px] md:text-xs uppercase tracking-widest font-bold">Gestão Infinity</p>
             </div>
           </div>
-          
-          <button 
-            onClick={() => setActiveView('adicionar_transacao')}
-            className="md:hidden bg-violet-600 hover:bg-violet-700 text-white w-10 h-10 rounded-xl shadow-lg shadow-violet-200 flex items-center justify-center transition-all active:scale-95"
-          >
-            <i className="fas fa-plus text-xs"></i>
-          </button>
         </div>
 
         <div className="flex justify-center md:justify-end w-full md:w-auto">
@@ -250,16 +269,9 @@ const UserHome: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <button 
-          onClick={() => setActiveView('adicionar_transacao')}
-          className="hidden md:flex bg-violet-600 hover:bg-violet-700 text-white w-12 h-12 rounded-2xl shadow-xl shadow-violet-200 items-center justify-center transition-all active:scale-95"
-        >
-          <i className="fas fa-plus"></i>
-        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
         <div className="bg-violet-600 p-6 rounded-[2rem] relative overflow-hidden group shadow-xl shadow-violet-100 transition-all hover:-translate-y-1">
           <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-125 transition-transform duration-700 text-white">
             <i className="fas fa-wallet text-4xl"></i>
@@ -277,16 +289,6 @@ const UserHome: React.FC = () => {
             <h3 className="text-lg font-black text-emerald-500 tracking-tight">
               + R$ {stats.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h3>
-            {stats.incomeAccountBreakdown.length > 0 && (
-              <div className="mt-3 space-y-1 pt-2 border-t border-slate-50">
-                {stats.incomeAccountBreakdown.map(item => (
-                  <div key={item.name} className="flex justify-between items-center text-[9px] font-bold">
-                    <span className="text-slate-400 truncate max-w-[80px]">{item.name}</span>
-                    <span className="text-emerald-500">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           <div className="mt-3 flex items-center gap-2 pt-2">
              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center"><i className="fas fa-arrow-trend-up text-[10px]"></i></div>
@@ -300,16 +302,6 @@ const UserHome: React.FC = () => {
             <h3 className="text-lg font-black text-rose-500 tracking-tight">
               - R$ {stats.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h3>
-            {stats.expenseAccountBreakdown.length > 0 && (
-              <div className="mt-3 space-y-1 pt-2 border-t border-slate-50">
-                {stats.expenseAccountBreakdown.map(item => (
-                  <div key={item.name} className="flex justify-between items-center text-[9px] font-bold">
-                    <span className="text-slate-400 truncate max-w-[80px]">{item.name}</span>
-                    <span className="text-rose-500">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           <div className="mt-3 flex items-center gap-2 pt-2">
              <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center"><i className="fas fa-arrow-trend-down text-[10px]"></i></div>
@@ -342,41 +334,133 @@ const UserHome: React.FC = () => {
              <span className="text-[9px] text-slate-400 font-bold uppercase">Digital</span>
           </div>
         </div>
+
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-rose-500 mb-1">Gastos Cartão</p>
+            <h3 className="text-lg font-black text-rose-600 tracking-tight">
+              - R$ {stats.totalCardExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="mt-3 flex items-center gap-2 pt-2">
+             <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center"><i className="fas fa-credit-card text-[10px]"></i></div>
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Cartões</span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <DashboardWidget 
           title={`Entradas por Conta (${months[currentMonth]})`} 
           data={stats.incomeAccountBreakdown} 
           emptyMessage={`Sem entradas registradas.`}
           icon="fa-piggy-bank"
+          palette={PALETTES.income}
         />
         <DashboardWidget 
-          title={`Gastos por categorias (${months[currentMonth]})`} 
+          title={`Gastos por Categorias (${months[currentMonth]})`} 
           data={stats.categoryBreakdown} 
           emptyMessage={`Sem gastos registrados.`}
           icon="fa-chart-pie"
+          palette={PALETTES.category}
         />
         <DashboardWidget 
-          title={`Gastos Dinheiro (${months[currentMonth]})`} 
+          title={`Gastos em Dinheiro (${months[currentMonth]})`} 
           data={stats.cashCategoryBreakdown} 
           emptyMessage={`Sem gastos em dinheiro.`}
           icon="fa-wallet"
+          palette={PALETTES.cash}
         />
         <DashboardWidget 
-          title={`Gastos Conta Digital (${months[currentMonth]})`} 
+          title={`Gastos Contas Digitais (${months[currentMonth]})`} 
           data={stats.digitalAccountBreakdown} 
           emptyMessage={`Sem gastos digitais.`}
           icon="fa-university"
+          palette={PALETTES.digital}
+        />
+        <DashboardWidget 
+          title={`Gastos por Cartão (${months[currentMonth]})`} 
+          data={stats.cardBreakdown} 
+          emptyMessage={`Sem gastos em cartões.`}
+          icon="fa-credit-card"
+          palette={PALETTES.card}
         />
       </div>
 
-      <button 
-        onClick={() => setActiveView('adicionar_transacao')}
-        className="fixed bottom-24 right-6 md:hidden bg-violet-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-30 active:scale-90 transition-transform"
-      >
-        <i className="fas fa-plus text-xl"></i>
-      </button>
+      <div className="fixed bottom-10 right-6 z-30 flex flex-col items-end gap-3">
+        {showAddMenu && (
+          <div className="flex flex-col gap-2 mb-2 animate-in slide-in-from-bottom-4 duration-300">
+            <button 
+              onClick={() => openAddForm('income')}
+              className="bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+            >
+              <i className="fas fa-arrow-up"></i>
+              Entrada
+            </button>
+            <button 
+              onClick={() => openAddForm('expense')}
+              className="bg-rose-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+            >
+              <i className="fas fa-arrow-down"></i>
+              Saída
+            </button>
+            <button 
+              onClick={() => openAddForm('credit_card')}
+              className="bg-purple-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+            >
+              <i className="fas fa-credit-card"></i>
+              Saída Cartão
+            </button>
+            <button 
+              onClick={() => openAddForm('transfer')}
+              className="bg-sky-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+            >
+              <i className="fas fa-repeat"></i>
+              Transferência
+            </button>
+          </div>
+        )}
+        <button 
+          onClick={() => setShowAddMenu(!showAddMenu)}
+          className={`bg-violet-600 text-white w-20 h-20 rounded-full shadow-2xl flex items-center justify-center transition-all border-4 border-white ${showAddMenu ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
+        >
+          <i className={`fas ${showAddMenu ? 'fa-times' : 'fa-plus'} text-3xl`}></i>
+        </button>
+      </div>
+
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${selectedType === 'income' ? 'bg-emerald-600' : selectedType === 'expense' ? 'bg-rose-600' : selectedType === 'credit_card' ? 'bg-purple-600' : 'bg-sky-600'}`}>
+                  <i className={`fas ${selectedType === 'income' ? 'fa-arrow-up' : selectedType === 'expense' ? 'fa-arrow-down' : selectedType === 'credit_card' ? 'fa-credit-card' : 'fa-repeat'}`}></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">
+                    {selectedType === 'income' ? 'Nova Entrada' : selectedType === 'expense' ? 'Nova Saída' : selectedType === 'credit_card' ? 'Lançamento Cartão' : 'Nova Transferência'}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Movimentação Financeira</p>
+                </div>
+              </div>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-300 hover:text-slate-600 transition-colors">
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {selectedType === 'transfer' ? (
+                <TransfersManager isModal onCancel={() => setIsAddModalOpen(false)} />
+              ) : (
+                <AddTransaction 
+                  initialType={selectedType} 
+                  onCancel={() => setIsAddModalOpen(false)} 
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

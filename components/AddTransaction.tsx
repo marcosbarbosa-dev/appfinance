@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../App';
 import { TransactionType, Transaction } from '../types';
@@ -6,17 +5,28 @@ import { TransactionType, Transaction } from '../types';
 interface AddTransactionProps {
   editTransaction?: Transaction | null;
   onCancel?: () => void;
+  initialType?: TransactionType;
 }
 
-const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCancel }) => {
-  const { setActiveView, categories, saveTransaction, saveTransactions, bankAccounts, user, setIsSidebarOpen, checkInternet } = useAuth();
+const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCancel, initialType }) => {
+  const { 
+    setActiveView, 
+    categories, 
+    saveTransaction, 
+    saveTransactions, 
+    bankAccounts, 
+    user, 
+    setIsSidebarOpen, 
+    checkInternet,
+    transactions 
+  } = useAuth();
   
   const today = new Date().toISOString().split('T')[0];
 
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    type: 'expense' as TransactionType,
+    type: (initialType || 'expense') as TransactionType,
     category: '',
     accountId: '',
     date: today,
@@ -25,11 +35,13 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
     isInstallment: false
   });
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     if (editTransaction) {
       setFormData({
         description: editTransaction.description,
-        amount: Math.abs(editTransaction.amount).toString(),
+        amount: Math.abs(editTransaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
         type: editTransaction.type,
         category: editTransaction.category,
         accountId: editTransaction.accountId,
@@ -38,8 +50,47 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
         totalInstallments: editTransaction.totalInstallments || 1,
         isInstallment: !!editTransaction.installmentNumber && editTransaction.installmentNumber > 0
       });
+    } else if (initialType) {
+      let defaultId = '';
+      if (initialType === 'income' || initialType === 'expense') {
+        const defaultAcc = bankAccounts.find(acc => acc.isDefault);
+        if (defaultAcc) {
+          defaultId = defaultAcc.id;
+        }
+      } else if (initialType === 'credit_card') {
+        const firstCard = bankAccounts.find(acc => acc.type === 'credit_card');
+        if (firstCard) defaultId = firstCard.id;
+      }
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        type: initialType, 
+        accountId: defaultId || prev.accountId 
+      }));
     }
-  }, [editTransaction]);
+  }, [editTransaction, initialType, bankAccounts]);
+
+  useEffect(() => {
+    if (editTransaction) return;
+
+    if (formData.type === 'income' || formData.type === 'expense') {
+      const defaultAcc = bankAccounts.find(acc => acc.isDefault);
+      if (defaultAcc && formData.accountId !== defaultAcc.id) {
+        setFormData(prev => ({ ...prev, accountId: defaultAcc.id }));
+      }
+    }
+  }, [formData.type, editTransaction, bankAccounts]);
+
+  const currentAccountBalance = useMemo(() => {
+    if (!formData.accountId) return 0;
+    return transactions
+      .filter(t => t.accountId === formData.accountId)
+      .reduce((acc, curr) => acc + curr.amount, 0);
+  }, [transactions, formData.accountId]);
+
+  const selectedAccount = useMemo(() => {
+    return bankAccounts.find(a => a.id === formData.accountId);
+  }, [bankAccounts, formData.accountId]);
 
   const filteredCategories = useMemo(() => {
     const typeToFilter = formData.type === 'income' ? 'income' : 'expense';
@@ -61,9 +112,23 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
 
   useEffect(() => {
     if (filteredAccounts.length > 0 && !filteredAccounts.find(a => a.id === formData.accountId)) {
-      setFormData(prev => ({ ...prev, accountId: filteredAccounts[0].id }));
+      const defaultAcc = filteredAccounts.find(a => a.isDefault);
+      setFormData(prev => ({ ...prev, accountId: defaultAcc ? defaultAcc.id : filteredAccounts[0].id }));
     }
   }, [filteredAccounts]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    val = val.replace(/[^\d,]/g, "");
+    const parts = val.split(',');
+    if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+    if (parts[0]) {
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    const formatted = parts.join(',');
+    setFormData({ ...formData, amount: formatted });
+    setError(null);
+  };
 
   const isInstallmentInvalid = useMemo(() => {
     if (!formData.isInstallment) return false;
@@ -75,27 +140,25 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
 
   const isFormInvalid = useMemo(() => {
     const isBasicInvalid = !formData.amount || !formData.accountId || !formData.category || filteredCategories.length === 0 || filteredAccounts.length === 0;
-    
-    if (formData.isInstallment) {
-      return isBasicInvalid || isInstallmentInvalid;
-    }
-    
+    if (formData.isInstallment) return isBasicInvalid || isInstallmentInvalid;
     return isBasicInvalid;
   }, [formData, filteredCategories, filteredAccounts, isInstallmentInvalid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkInternet() || isFormInvalid || !user) return;
-
-    // Garantir que o valor seja tratado como número corretamente
-    const baseAmount = parseFloat(formData.amount.replace(',', '.'));
-    const finalAmount = formData.type === 'income' ? Math.abs(baseAmount) : -Math.abs(baseAmount);
-
+    const rawAmount = formData.amount.replace(/\./g, "").replace(",", ".");
+    const amountValue = parseFloat(rawAmount);
+    if (isNaN(amountValue)) return;
+    const finalAmount = formData.type === 'income' ? Math.abs(amountValue) : -Math.abs(amountValue);
+    const isLiquid = selectedAccount?.type !== 'credit_card';
+    if (formData.type !== 'income' && isLiquid && amountValue > currentAccountBalance && !editTransaction) {
+      setError("Saldo insuficiente");
+      return;
+    }
     const currentP_Num = Number(formData.currentInstallment);
     const totalP_Num = Number(formData.totalInstallments);
-
     if (editTransaction) {
-      // Criação de um objeto limpo para evitar enviar campos de controle do formulário para o banco
       const cleanTransaction: Transaction = {
         id: editTransaction.id,
         userId: user.uid,
@@ -108,7 +171,6 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
         installmentNumber: formData.isInstallment ? currentP_Num : undefined,
         totalInstallments: formData.isInstallment ? totalP_Num : undefined
       };
-
       await saveTransaction(cleanTransaction);
     } else {
       const newTransactions: Transaction[] = [];
@@ -116,12 +178,10 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
       const endParcel = formData.isInstallment ? totalP_Num : 1;
       const numToGenerate = (endParcel - startParcel) + 1;
       const baseDate = new Date(formData.date + 'T12:00:00');
-
       for (let i = 0; i < numToGenerate; i++) {
         const parcelDate = new Date(baseDate);
         parcelDate.setMonth(baseDate.getMonth() + i);
         const currentP = startParcel + i;
-
         newTransactions.push({
           id: crypto.randomUUID(),
           userId: user.uid,
@@ -135,14 +195,9 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
           totalInstallments: formData.isInstallment ? totalP_Num : undefined,
         });
       }
-      
-      if (newTransactions.length === 1) {
-        await saveTransaction(newTransactions[0]);
-      } else {
-        await saveTransactions(newTransactions);
-      }
+      if (newTransactions.length === 1) await saveTransaction(newTransactions[0]);
+      else await saveTransactions(newTransactions);
     }
-    
     if (onCancel) onCancel();
     else setActiveView('inicio');
   };
@@ -153,60 +208,52 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
   };
 
   return (
-    <div className={`${editTransaction ? 'p-4' : 'p-4 md:p-8 max-w-2xl mx-auto'}`}>
-      {!editTransaction && (
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-600 shadow-sm transition-all"><i className="fas fa-bars"></i></button>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Novo Lançamento</h2>
-              <p className="text-slate-500 text-sm">Registre sua movimentação Personalle</p>
-            </div>
-          </div>
-          <button onClick={handleCancel} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-rose-600 transition-all"><i className="fas fa-times"></i></button>
-        </div>
-      )}
-
-      <div className={`rounded-2xl ${editTransaction ? '' : 'bg-white shadow-sm border border-slate-100 overflow-hidden'}`}>
-        <form onSubmit={handleSubmit} className={`${editTransaction ? 'space-y-4' : 'p-8 space-y-8'}`}>
-          <div>
-            <label className={`block font-bold text-slate-700 mb-3 text-center text-slate-400 uppercase tracking-widest ${editTransaction ? 'text-[9px]' : 'text-sm'}`}>Fluxo de Caixa</label>
-            <div className="flex p-1 bg-slate-50 rounded-xl gap-1 border border-slate-100">
-              {[
-                { id: 'income', label: 'Entrada', icon: 'fa-arrow-up', color: 'text-violet-500' },
-                { id: 'expense', label: 'Saída', icon: 'fa-arrow-down', color: 'text-rose-500' },
-                { id: 'credit_card', label: 'Cartão', icon: 'fa-credit-card', color: 'text-purple-500' },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setFormData({...formData, type: t.id as TransactionType})}
-                  className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg transition-all ${formData.type === t.id ? 'bg-white shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-500'}`}
-                >
-                  <i className={`fas ${t.icon} ${formData.type === t.id ? t.color : ''} ${editTransaction ? 'text-xs' : 'text-sm'}`}></i>
-                  <span className={`font-bold ${editTransaction ? 'text-[10px]' : 'text-xs'} ${formData.type === t.id ? 'text-slate-800' : ''}`}>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={`${editTransaction ? 'space-y-4' : 'space-y-6'}`}>
+    <div className="p-4 md:p-6">
+      <div className={`rounded-2xl ${editTransaction ? '' : 'bg-white'}`}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             <div className={`grid grid-cols-1 ${editTransaction ? '' : 'sm:grid-cols-2'} gap-4`}>
               <div>
                 <label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Valor do Lançamento</label>
                 <div className="relative">
                   <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold ${editTransaction ? 'text-xs' : 'text-base'}`}>R$</span>
-                  <input type="number" step="0.01" required value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0,00" className={`w-full pl-10 pr-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-black bg-white text-black ${editTransaction ? 'py-2.5 text-base' : 'py-3.5 text-xl'}`}/>
+                  <input 
+                    type="text" 
+                    required 
+                    inputMode="decimal"
+                    value={formData.amount} 
+                    onChange={handleAmountChange} 
+                    placeholder="0,00" 
+                    className={`w-full pl-10 pr-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all font-black bg-white text-black ${editTransaction ? 'py-2.5 text-base' : 'py-3.5 text-xl'}`}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Conta Relacionada</label>
-                <select required value={formData.accountId} onChange={(e) => setFormData({...formData, accountId: e.target.value})} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}>
-                  {filteredAccounts.length > 0 ? filteredAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} ({acc.bankName})</option>) : <option value="">Nenhuma conta disponível</option>}
+                <select required value={formData.accountId} onChange={(e) => { setFormData({...formData, accountId: e.target.value}); setError(null); }} className={`w-full px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white text-black font-bold ${editTransaction ? 'py-2.5 text-xs' : 'py-3.5 text-sm'}`}>
+                  {filteredAccounts.length > 0 ? filteredAccounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.bankName}){acc.isDefault ? ' [Padrão]' : ''}
+                    </option>
+                  )) : <option value="">Nenhuma conta disponível</option>}
                 </select>
+                {formData.accountId && selectedAccount?.type !== 'credit_card' && (
+                  <p className="text-[10px] font-bold text-slate-400 mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-300">
+                    Saldo: <span className={currentAccountBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                      R$ {currentAccountBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
+
+            {error && (
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-xs font-bold animate-in shake duration-300">
+                <i className="fas fa-exclamation-circle"></i>
+                {error}
+              </div>
+            )}
 
             <div>
               <label className={`block font-bold text-slate-600 mb-1.5 ${editTransaction ? 'text-[10px]' : 'text-sm'}`}>Descrição <span className="text-slate-400 font-normal">(Opcional)</span></label>
@@ -230,6 +277,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
                         <input 
                           type="number" 
                           min="1" 
+                          inputMode="numeric"
                           value={formData.currentInstallment} 
                           onChange={(e) => setFormData(prev => ({ ...prev, currentInstallment: e.target.value }))} 
                           className={`w-full bg-white text-black border rounded-lg px-3 py-2 text-sm font-bold outline-none transition-all ${isInstallmentInvalid && formData.currentInstallment !== '' ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-purple-400'}`}
@@ -244,17 +292,13 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
                         <input 
                           type="number" 
                           min="1" 
+                          inputMode="numeric"
                           value={formData.totalInstallments} 
                           onChange={(e) => setFormData(prev => ({ ...prev, totalInstallments: e.target.value }))} 
                           className={`w-full bg-white text-black border rounded-lg px-3 py-2 text-sm font-bold outline-none transition-all ${isInstallmentInvalid && formData.totalInstallments !== '' ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-purple-400'}`}
                         />
                       </div>
                     </div>
-                    {isInstallmentInvalid && formData.currentInstallment !== '' && formData.totalInstallments !== '' && (
-                      <p className="text-[10px] text-rose-600 font-bold text-center italic bg-rose-50 py-1.5 rounded-lg border border-rose-100">
-                        A parcela final deve ser maior que a inicial.
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
@@ -267,14 +311,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
           </div>
 
           <div className={`flex flex-col gap-2 ${editTransaction ? 'pt-2' : 'pt-4'}`}>
-            <button 
-              type="submit" 
-              disabled={isFormInvalid} 
-              className={`w-full bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-lg shadow-violet-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale ${editTransaction ? 'py-3.5 text-xs' : 'py-4 text-base'}`}
-            >
-              <i className="fas fa-check text-[10px]"></i>
-              {editTransaction ? 'Atualizar Registro' : 'Salvar no Extrato'}
-            </button>
+            <button type="submit" disabled={isFormInvalid} className={`w-full bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-lg shadow-violet-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale ${editTransaction ? 'py-3.5 text-xs' : 'py-4 text-base'}`}><i className="fas fa-check text-[10px]"></i>{editTransaction ? 'Atualizar Registro' : 'Salvar no Extrato'}</button>
             {!editTransaction && <button type="button" onClick={handleCancel} className="w-full py-4 text-slate-400 hover:text-rose-600 font-bold transition-all text-sm">Cancelar</button>}
           </div>
         </form>

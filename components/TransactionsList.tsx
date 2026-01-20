@@ -77,7 +77,7 @@ const TransactionsList: React.FC = () => {
       </div>
 
       {editingTransaction && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-4 md:p-6 border-b border-slate-50 flex justify-between items-center"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center"><i className="fas fa-sliders"></i></div><div><h3 className="text-base font-bold text-slate-800">Editar Lançamento</h3><p className="text-[10px] text-slate-400">Ajuste seu registro financeiro</p></div></div><button onClick={() => setEditingTransaction(null)} className="text-slate-300 hover:text-slate-600"><i className="fas fa-times text-lg"></i></button></div>
             <div className="flex-1 overflow-y-auto"><AddTransaction editTransaction={editingTransaction} onCancel={() => setEditingTransaction(null)} /><div className="px-5 pb-8 pt-2"><button onClick={() => setShowDeleteConfirm(true)} className="w-full py-3 bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 group"><i className="fas fa-trash-can text-[10px]"></i>Remover Registro</button></div></div>
@@ -86,7 +86,7 @@ const TransactionsList: React.FC = () => {
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
             <div className="w-20 h-20 mx-auto bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner"><i className="fas fa-exclamation-triangle"></i></div>
             <div className="space-y-2"><h3 className="text-xl font-bold text-slate-800">Excluir Registro?</h3><p className="text-sm text-slate-500">Esta ação é irreversível e o lançamento será removido permanentemente.</p></div>

@@ -196,14 +196,14 @@ const NoticesManager: React.FC = () => {
 
       {/* Modal de Edição */}
       {isModalOpen && editingNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-auto">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <h3 className="text-lg font-bold">Ações do Aviso</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-300 hover:text-slate-500 transition-colors"><i className="fas fa-times text-xl"></i></button>
             </div>
             
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
               <form onSubmit={handleUpdate} className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Título</label>
@@ -258,7 +258,7 @@ const NoticesManager: React.FC = () => {
 
       {/* Confirmação de Exclusão Personalizada */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl p-8 text-center space-y-6">
             <div className="w-20 h-20 mx-auto bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner border border-rose-100">
               <i className="fas fa-trash-can"></i>

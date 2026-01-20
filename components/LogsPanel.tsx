@@ -201,7 +201,7 @@ const LogsPanel: React.FC = () => {
       )}
 
       {showClearConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-lg animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
             <div className="w-20 h-20 mx-auto bg-rose-600 text-white rounded-3xl flex items-center justify-center text-3xl shadow-xl animate-pulse">
               <i className="fas fa-triangle-exclamation"></i>
