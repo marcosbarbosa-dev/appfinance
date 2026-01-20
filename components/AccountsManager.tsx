@@ -63,7 +63,7 @@ const AccountsManager: React.FC = () => {
     
     // Força padrão se for a única corrente
     const isAddingFirstChecking = formData.type === 'checking' && currentCheckingCount === 0;
-    const isEditingOnlyChecking = formData.type === 'checking' && editingAccount && currentCheckingCount === 1 && checkingAccounts[0].id === editingAccount.id;
+    const isEditingOnlyChecking = formData.type === 'checking' && editingAccount !== null && currentCheckingCount === 1 && checkingAccounts[0].id === editingAccount.id;
 
     if (isAddingFirstChecking || isEditingOnlyChecking) {
       isDefaultFinal = true;
@@ -211,7 +211,7 @@ const AccountsManager: React.FC = () => {
                   disabled={editingAccount?.name.toLowerCase() === 'dinheiro'}
                   onChange={(e) => {
                     const newType = e.target.value as BankAccount['type'];
-                    const isOnlyChecking = checkingAccounts.length === 0 || (editingAccount && checkingAccounts.length === 1 && checkingAccounts[0].id === editingAccount.id);
+                    const isOnlyChecking = checkingAccounts.length === 0 || (editingAccount !== null && checkingAccounts.length === 1 && checkingAccounts[0].id === editingAccount.id);
                     setFormData({
                       ...formData, 
                       type: newType,
@@ -233,8 +233,8 @@ const AccountsManager: React.FC = () => {
                   <input 
                     type="checkbox" 
                     id="isDefault"
-                    checked={!!formData.isDefault}
-                    disabled={checkingAccounts.length === 0 || (editingAccount && checkingAccounts.length === 1 && checkingAccounts[0].id === editingAccount.id)}
+                    checked={formData.isDefault === true}
+                    disabled={checkingAccounts.length === 0 || (editingAccount !== null && checkingAccounts.length === 1 && checkingAccounts[0].id === editingAccount.id)}
                     onChange={(e) => setFormData({...formData, isDefault: e.target.checked})}
                     className="w-5 h-5 rounded text-violet-600 focus:ring-violet-500 cursor-pointer"
                   />
