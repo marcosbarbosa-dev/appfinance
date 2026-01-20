@@ -74,9 +74,9 @@ interface AuthContextType {
   isSystemLocked: boolean;
   setIsSystemLocked: (locked: boolean) => Promise<void>;
   triggerGlobalRefresh: () => Promise<void>;
-  addLog: (userToLog: User, action: LogAction, details?: string) => void;
-  deleteLog: (id: string) => void;
-  clearLogs: () => void;
+  addLog: (userToLog: User, action: LogAction, details?: string) => Promise<void>;
+  deleteLog: (id: string) => Promise<void>;
+  clearLogs: () => Promise<void>;
   activeView: string;
   setActiveView: (view: string) => void;
   viewMode: 'admin' | 'user';
@@ -84,7 +84,7 @@ interface AuthContextType {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
   login: (username: string, pass: string) => Promise<void>;
-  logout: (msg?: string) => void;
+  logout: (msg?: string) => Promise<void>;
   updatePassword: (newPass: string) => Promise<void>;
   updateProfile: (name: string, avatar: string, password?: string) => Promise<void>;
   isOnline: boolean;
@@ -215,7 +215,7 @@ const App: React.FC = () => {
     return true;
   }, []);
 
-  const logout = useCallback(async (msg?: any) => {
+  const logout = useCallback(async (msg?: string) => {
     setIsSidebarOpen(false);
     localStorage.removeItem('personalle_user');
     userRef.current = null;
@@ -261,7 +261,7 @@ const App: React.FC = () => {
         }
 
         if (configData.is_system_locked && userRef.current && userRef.current.role !== 'admin') {
-          logout("Sessão encerrada pelo administrador.");
+          await logout("Sessão encerrada pelo administrador.");
           return;
         }
       }
@@ -292,7 +292,7 @@ const App: React.FC = () => {
       }
 
       if (!currentUserStatus && userRef.current) {
-        logout();
+        await logout();
         return;
       }
 
@@ -304,7 +304,7 @@ const App: React.FC = () => {
         lastRefreshId.current = currentUserStatus.refreshId || null;
         const today = new Date().toISOString().split('T')[0];
         if (!currentUserStatus.isActive || (currentUserStatus.suspensionDate && today > currentUserStatus.suspensionDate)) {
-          logout("Sua conta foi suspensa.");
+          await logout("Sua conta foi suspensa.");
           return;
         }
         setUser(currentUserStatus);
@@ -366,7 +366,7 @@ const App: React.FC = () => {
     const adminActions: LogAction[] = ['create_user', 'edit_user', 'delete_user'];
     if (!adminActions.includes(action)) return;
     const newLog: SystemLog = {
-      id: crypto.randomUUID(),
+      id: window.crypto.randomUUID(),
       userId: userToLog.uid,
       userName: userToLog.name,
       action,
@@ -610,10 +610,12 @@ const App: React.FC = () => {
   }, [user]);
 
   const setLogs = async (newLogs: SystemLog[]) => setLogsState(newLogs);
+  
   const deleteLog = async (id: string) => {
     await supabase.from('logs').delete().eq('id', id);
     setLogsState(prev => prev.filter(l => l.id !== id));
   };
+  
   const clearLogs = async () => {
     await supabase.from('logs').delete().gt('timestamp', '1970-01-01T00:00:00Z');
     setLogsState([]);
@@ -679,7 +681,7 @@ const App: React.FC = () => {
     setIsSystemLockedState(locked);
   };
   const triggerGlobalRefresh = async () => {
-    const newRid = crypto.randomUUID();
+    const newRid = window.crypto.randomUUID();
     const { error } = await supabase.from('app_config').upsert({ id: 'main', global_refresh_id: newRid });
     if (error) throw error;
   };
@@ -693,7 +695,6 @@ const App: React.FC = () => {
       case 'contas': return <AccountsManager />;
       case 'categorias': return <CategoriesManager />;
       case 'lancamentos': return <TransactionsList />;
-      case 'transferencias': return <TransfersManager />;
       case 'metas': return <GoalsManager />;
       case 'avisos': return <NoticesManager />;
       case 'config': return <ConfigManager />;

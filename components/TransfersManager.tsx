@@ -55,7 +55,7 @@ const TransfersManager: React.FC<TransfersManagerProps> = ({ isModal, onCancel }
       const fromAcc = eligibleAccounts.find(a => a.id === formData.fromAccountId);
       const toAcc = eligibleAccounts.find(a => a.id === formData.toAccountId);
       const debitTransaction: Transaction = {
-        id: crypto.randomUUID(),
+        id: window.crypto.randomUUID(),
         userId: user.uid,
         description: `Transferência: Enviado para ${toAcc?.name}`,
         amount: -Math.abs(amountValue),
@@ -65,7 +65,7 @@ const TransfersManager: React.FC<TransfersManagerProps> = ({ isModal, onCancel }
         date: formData.date
       };
       const creditTransaction: Transaction = {
-        id: crypto.randomUUID(),
+        id: window.crypto.randomUUID(),
         userId: user.uid,
         description: `Transferência: Recebido de ${fromAcc?.name}`,
         amount: Math.abs(amountValue),

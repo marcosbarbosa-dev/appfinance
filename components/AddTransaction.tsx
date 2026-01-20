@@ -183,7 +183,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
         parcelDate.setMonth(baseDate.getMonth() + i);
         const currentP = startParcel + i;
         newTransactions.push({
-          id: crypto.randomUUID(),
+          id: window.crypto.randomUUID(),
           userId: user.uid,
           description: formData.description + (formData.isInstallment ? ` (${currentP}/${totalP_Num})` : ''),
           amount: finalAmount,
