@@ -43,6 +43,16 @@ const GoalsManager: React.FC = () => {
     return parseFloat(String(val).replace(/\./g, '').replace(',', '.')) || 0;
   };
 
+  const formatAmountInput = (val: string) => {
+    let cleanVal = val.replace(/[^\d,]/g, "");
+    const parts = cleanVal.split(',');
+    if (parts.length > 2) cleanVal = parts[0] + ',' + parts.slice(1).join('');
+    if (parts[0]) {
+      parts[0] = parts[0].replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    return parts.join(',');
+  };
+
   const accountBalances = useMemo(() => {
     const balances: Record<string, number> = {};
     bankAccounts.forEach(acc => {
@@ -103,7 +113,7 @@ const GoalsManager: React.FC = () => {
     setCreateGoalError('');
     setFormData({ 
       name: goal.name, 
-      targetAmount: goal.targetAmount.toString(), 
+      targetAmount: goal.targetAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), 
       initialAmount: '', 
       debitFromAccount: false,
       accountId: eligibleAccounts[0]?.id || '',
@@ -482,12 +492,12 @@ const GoalsManager: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-1">Valor Alvo (R$)</label>
-                    <input type="text" required inputMode="decimal" value={formData.targetAmount} onChange={(e) => setFormData({...formData, targetAmount: e.target.value})} placeholder="0,00" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 font-black bg-white text-black text-base outline-none"/>
+                    <input type="text" required inputMode="decimal" value={formData.targetAmount} onChange={(e) => setFormData({...formData, targetAmount: formatAmountInput(e.target.value)})} placeholder="0,00" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 font-black bg-white text-black text-base outline-none"/>
                   </div>
                   {!editingGoal && (
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-1">Entrada Inicial (R$)</label>
-                      <input type="text" inputMode="decimal" value={formData.initialAmount} onChange={(e) => setFormData({...formData, initialAmount: e.target.value})} placeholder="0,00" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 font-black bg-white text-black text-base outline-none"/>
+                      <input type="text" inputMode="decimal" value={formData.initialAmount} onChange={(e) => setFormData({...formData, initialAmount: formatAmountInput(e.target.value)})} placeholder="0,00" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 font-black bg-white text-black text-base outline-none"/>
                     </div>
                   )}
                 </div>
@@ -611,7 +621,7 @@ const GoalsManager: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-black text-slate-400 uppercase ml-1">Valor (R$)</label>
-                <input type="text" required inputMode="decimal" value={contributionData.amount} onChange={(e) => setContributionData({...contributionData, amount: e.target.value})} placeholder="0,00" className="w-full px-5 py-4 rounded-2xl border border-slate-200 font-black bg-white text-black text-xl text-center outline-none focus:ring-2 focus:ring-violet-500"/>
+                <input type="text" required inputMode="decimal" value={contributionData.amount} onChange={(e) => setContributionData({...contributionData, amount: formatAmountInput(e.target.value)})} placeholder="0,00" className="w-full px-5 py-4 rounded-2xl border border-slate-200 font-black bg-white text-black text-xl text-center outline-none focus:ring-2 focus:ring-violet-500"/>
               </div>
 
               {contributionError && (
@@ -710,7 +720,7 @@ const GoalsManager: React.FC = () => {
                   type="text" 
                   inputMode="decimal"
                   value={editHistoryAmount} 
-                  onChange={(e) => setEditHistoryAmount(e.target.value)}
+                  onChange={(e) => setEditHistoryAmount(formatAmountInput(e.target.value))}
                   placeholder="0,00"
                   className="w-full px-5 py-4 rounded-2xl border border-slate-200 font-black bg-white text-black text-xl text-center outline-none focus:ring-2 focus:ring-violet-500"
                 />

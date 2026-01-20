@@ -32,23 +32,42 @@ const TransfersManager: React.FC<TransfersManagerProps> = ({ isModal, onCancel }
       .reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions, formData.fromAccountId]);
 
+  const parseFormattedNumber = (val: string) => {
+    return parseFloat(String(val).replace(/\./g, '').replace(',', '.')) || 0;
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    val = val.replace(/[^\d,]/g, "");
+    const parts = val.split(',');
+    if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+    if (parts[0]) {
+      parts[0] = parts[0].replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    const formatted = parts.join(',');
+    setFormData({ ...formData, amount: formatted });
+    setError('');
+  };
+
   const canTransfer = useMemo(() => {
     return (
       formData.fromAccountId !== '' &&
       formData.toAccountId !== '' &&
       formData.fromAccountId !== formData.toAccountId &&
-      parseFloat(formData.amount) > 0
+      parseFormattedNumber(formData.amount) > 0
     );
   }, [formData]);
 
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkInternet() || !canTransfer || !user) return;
-    const amountValue = parseFloat(formData.amount);
+    
+    const amountValue = parseFormattedNumber(formData.amount);
     if (sourceBalance < amountValue) {
       setError(`Saldo insuficiente. Disponível: R$ ${sourceBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
       return;
     }
+
     setLoading(true);
     setError('');
     try {
@@ -117,12 +136,11 @@ const TransfersManager: React.FC<TransfersManagerProps> = ({ isModal, onCancel }
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">R$</span>
                 <input 
-                  type="number" 
-                  step="0.01" 
+                  type="text" 
                   inputMode="decimal"
                   required 
                   value={formData.amount} 
-                  onChange={(e) => { setFormData({...formData, amount: e.target.value}); setError(''); }} 
+                  onChange={handleAmountChange} 
                   placeholder="0,00" 
                   className="w-full pl-10 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none font-black bg-white text-black text-lg"
                 />

@@ -422,9 +422,9 @@ const UserHome: React.FC = () => {
         )}
         <button 
           onClick={() => setShowAddMenu(!showAddMenu)}
-          className={`bg-violet-600 text-white w-20 h-20 rounded-full shadow-2xl flex items-center justify-center transition-all border-4 border-white ${showAddMenu ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
+          className={`bg-violet-600 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all border-4 border-white ${showAddMenu ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
         >
-          <i className={`fas ${showAddMenu ? 'fa-times' : 'fa-plus'} text-3xl`}></i>
+          <i className={`fas ${showAddMenu ? 'fa-times' : 'fa-plus'} text-2xl`}></i>
         </button>
       </div>
 

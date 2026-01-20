@@ -119,12 +119,17 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ editTransaction, onCanc
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
+    // Remove qualquer coisa que não seja dígito ou vírgula
     val = val.replace(/[^\d,]/g, "");
     const parts = val.split(',');
+    // Impede múltiplas vírgulas
     if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+    
     if (parts[0]) {
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      // Formata a parte inteira com pontos de milhar
+      parts[0] = parts[0].replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
+    
     const formatted = parts.join(',');
     setFormData({ ...formData, amount: formatted });
     setError(null);
