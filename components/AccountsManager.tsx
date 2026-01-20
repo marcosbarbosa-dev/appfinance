@@ -63,7 +63,7 @@ const AccountsManager: React.FC = () => {
     }
 
     const accToSave: BankAccount = {
-      id: editingAccount ? editingAccount.id : crypto.randomUUID(),
+      id: editingAccount ? editingAccount.id : window.crypto.randomUUID(),
       name: formData.name,
       bankName: formData.bankName,
       type: formData.type,
@@ -226,7 +226,7 @@ const AccountsManager: React.FC = () => {
                   <input 
                     type="checkbox" 
                     id="isDefault"
-                    checked={formData.isDefault}
+                    checked={!!formData.isDefault}
                     disabled={checkingAccounts.length === 0 || (editingAccount && checkingAccounts.length === 1 && checkingAccounts[0].id === editingAccount.id)}
                     onChange={(e) => setFormData({...formData, isDefault: e.target.checked})}
                     className="w-5 h-5 rounded text-violet-600 focus:ring-violet-500 cursor-pointer"
