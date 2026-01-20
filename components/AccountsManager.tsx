@@ -2,16 +2,23 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../App';
 import { BankAccount } from '../types';
 
+interface AccountFormData {
+  name: string;
+  bankName: string;
+  type: BankAccount['type'];
+  isDefault: boolean;
+}
+
 const AccountsManager: React.FC = () => {
   const { bankAccounts, transactions, saveBankAccount, saveBankAccountsBatch, deleteBankAccount, setIsSidebarOpen, checkInternet } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [accountToDelete, setAccountToDelete] = useState<BankAccount | null>(null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AccountFormData>({
     name: '',
     bankName: '',
-    type: 'checking' as BankAccount['type'],
+    type: 'checking',
     isDefault: false
   });
 
@@ -32,7 +39,7 @@ const AccountsManager: React.FC = () => {
         name: account.name, 
         bankName: account.bankName, 
         type: account.type,
-        isDefault: account.isDefault || false
+        isDefault: !!account.isDefault
       });
     } else {
       setEditingAccount(null);
