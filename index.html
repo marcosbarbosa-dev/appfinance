@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <title>Personalle Infinity</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,20 +14,22 @@
             background-color: #f8fafc;
             margin: 0;
             padding: 0;
-            height: 100%;
+            min-height: 100%;
             width: 100%;
-            overflow: hidden;
-            position: fixed;
-            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            /* Removido o position: fixed para evitar travamentos do teclado no APK */
+            display: flex;
+            flex-direction: column;
         }
 
         #root {
-            height: 100%;
+            flex: 1;
             width: 100%;
-            overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: none;
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -53,7 +54,7 @@
         }
 
         input, select, textarea {
-            font-size: 16px !important;
+            font-size: 16px !important; /* Evita zoom forçado no iOS/Android ao focar */
         }
     </style>
 <script type="importmap">
