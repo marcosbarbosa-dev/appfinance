@@ -17,12 +17,13 @@
             min-height: 100%;
             width: 100%;
             -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none; /* Impede o bounce-back que trava animações mobile */
         }
 
         body {
-            /* Removido o position: fixed para evitar travamentos do teclado no APK */
             display: flex;
             flex-direction: column;
+            overflow-x: hidden;
         }
 
         #root {
@@ -30,6 +31,13 @@
             width: 100%;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
+        }
+
+        /* Otimização de renderização para animações mobile */
+        .animate-in {
+            backface-visibility: hidden;
+            perspective: 1000px;
+            will-change: transform, opacity;
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -42,9 +50,6 @@
             background: #e2e8f0;
             border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #cbd5e1;
-        }
         @keyframes bounce-subtle {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
@@ -54,7 +59,7 @@
         }
 
         input, select, textarea {
-            font-size: 16px !important; /* Evita zoom forçado no iOS/Android ao focar */
+            font-size: 16px !important; 
         }
     </style>
 <script type="importmap">

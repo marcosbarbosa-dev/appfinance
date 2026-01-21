@@ -417,7 +417,7 @@ const GoalsManager: React.FC = () => {
       {/* Botão Flutuante de Entradas/Retiradas */}
       <div className="fixed bottom-24 right-6 z-30 flex flex-col items-end gap-3">
         {showContributionOptions && (
-          <div className="flex flex-col gap-2 mb-2 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="flex flex-col gap-2 mb-2 animate-in slide-in-from-bottom-4 duration-200">
             <button 
               onClick={() => { 
                 setContributionError(''); 
@@ -454,8 +454,8 @@ const GoalsManager: React.FC = () => {
 
       {/* Modal Nenhuma Meta Criada */}
       {showNoGoalsModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl p-8 text-center space-y-6 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl p-8 text-center space-y-6 animate-in zoom-in-95 duration-200 border border-white/10">
             <div className="w-20 h-20 mx-auto bg-violet-50 text-violet-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner border border-violet-100">
               <i className="fas fa-bullseye"></i>
             </div>
@@ -473,8 +473,8 @@ const GoalsManager: React.FC = () => {
 
       {/* Modal Criar/Editar Meta */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">{editingGoal ? 'Editar Meta' : 'Nova Meta Financeira'}</h3>
@@ -503,7 +503,7 @@ const GoalsManager: React.FC = () => {
                 </div>
 
                 {!editingGoal && formData.initialAmount && parseFormattedNumber(formData.initialAmount) > 0 && (
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black text-slate-500 uppercase">Debitar do saldo disponível?</span>
                       <button type="button" onClick={() => setFormData(prev => ({ ...prev, debitFromAccount: !prev.debitFromAccount }))} className={`w-10 h-6 rounded-full transition-all relative ${formData.debitFromAccount ? 'bg-violet-600' : 'bg-slate-300'}`}>
@@ -579,8 +579,8 @@ const GoalsManager: React.FC = () => {
 
       {/* Modal Entrada/Retirada */}
       {isContributionModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 space-y-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200 border border-white/10">
             <div className="text-center">
               <h3 className="text-xl font-bold text-slate-800">{contributionMode === 'in' ? 'Nova Entrada' : 'Retirada'}</h3>
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Movimentação de Meta</p>
@@ -642,8 +642,8 @@ const GoalsManager: React.FC = () => {
 
       {/* Modal Histórico */}
       {isHistoryModalOpen && selectedGoalForHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: selectedGoalForHistory.color }}><i className={`fas ${selectedGoalForHistory.icon}`}></i></div>
@@ -686,8 +686,8 @@ const GoalsManager: React.FC = () => {
 
       {/* Modal Edição de Item do Histórico */}
       {isEditHistoryItemModalOpen && editingHistoryItem && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 space-y-6">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200 border border-white/10">
             <div className="text-center">
               <h3 className="text-xl font-bold text-slate-800">Editar Lançamento</h3>
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{editingHistoryItem.description}</p>
@@ -737,8 +737,8 @@ const GoalsManager: React.FC = () => {
 
       {/* Confirmação Exclusão Meta */}
       {goalToDelete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl p-8 text-center space-y-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl p-8 text-center space-y-6 animate-in zoom-in-95 duration-200 border border-white/10">
             <div className="w-20 h-20 mx-auto bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner border border-rose-100">
               <i className="fas fa-trash-can"></i>
             </div>
