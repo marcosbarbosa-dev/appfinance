@@ -389,7 +389,7 @@ const UserHome: React.FC = () => {
 
       <div className="fixed bottom-10 right-6 z-30 flex flex-col items-end gap-3">
         {showAddMenu && (
-          <div className="flex flex-col gap-2 mb-2 animate-in slide-in-from-bottom-4 duration-200">
+          <div className="flex flex-col gap-2 mb-2 animate-in slide-in-from-bottom-4 duration-300">
             <button 
               onClick={() => openAddForm('income')}
               className="bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
@@ -422,15 +422,15 @@ const UserHome: React.FC = () => {
         )}
         <button 
           onClick={() => setShowAddMenu(!showAddMenu)}
-          className={`bg-violet-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all border-4 border-white ${showAddMenu ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
+          className={`bg-violet-600 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all border-4 border-white ${showAddMenu ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
         >
-          <i className={`fas ${showAddMenu ? 'fa-times' : 'fa-plus'} text-xl`}></i>
+          <i className={`fas ${showAddMenu ? 'fa-times' : 'fa-plus'} text-2xl`}></i>
         </button>
       </div>
 
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${selectedType === 'income' ? 'bg-emerald-600' : selectedType === 'expense' ? 'bg-rose-600' : selectedType === 'credit_card' ? 'bg-purple-600' : 'bg-sky-600'}`}>

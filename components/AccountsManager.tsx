@@ -172,8 +172,8 @@ const AccountsManager: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <h3 className="text-xl font-bold text-slate-800">{editingAccount ? 'Editar Conta' : 'Nova Conta'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -229,7 +229,7 @@ const AccountsManager: React.FC = () => {
               </div>
 
               {formData.type === 'checking' && (
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in slide-in-from-top-2">
                   <input 
                     type="checkbox" 
                     id="isDefault"
@@ -256,8 +256,8 @@ const AccountsManager: React.FC = () => {
 
       {/* Modal de Confirmação de Exclusão Premium */}
       {accountToDelete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6 transform animate-in zoom-in-95 duration-200 border border-white/10">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6 transform animate-in zoom-in-95 duration-200">
             <div className="w-20 h-20 mx-auto bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner border border-rose-100">
               <i className="fas fa-trash-can"></i>
             </div>
